@@ -1,3 +1,7 @@
+/* ================================
+   GLOBAL
+================================ */
+
 * {
   box-sizing: border-box;
 }
@@ -5,34 +9,34 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #0f1117;
-  color: white;
+  background: #0d1117;
+  color: #c9d1d9;
 }
+
+
+/* ================================
+   NAVBAR
+================================ */
 
 .navbar {
   height: 60px;
-  width: 100%;
-  background: #171a21;
-  border-bottom: 1px solid #2b2f38;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 20px;
+  padding: 0 18px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.logo span {
-  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .navbar-actions {
@@ -42,111 +46,233 @@ body {
 }
 
 .navbar-actions button {
-  background: #222631;
-  color: #ffffff;
+  background: #21262d;
+  color: #c9d1d9;
 
-  border: 1px solid #343945;
+  border: 1px solid #30363d;
   border-radius: 6px;
 
-  padding: 8px 14px;
-  cursor: pointer;
+  padding: 7px 12px;
 
-  font-size: 14px;
+  cursor: pointer;
 }
 
 .navbar-actions button:hover {
-  background: #2c313d;
+  background: #30363d;
 }
 
 .navbar-actions .run-button {
   background: #238636;
-  border-color: #238636;
+  color: white;
+  border: 1px solid #2ea043;
 }
 
 .navbar-actions .run-button:hover {
   background: #2ea043;
 }
+
+
+/* ================================
+   MAIN WORKSPACE
+================================ */
+
 .workspace {
+  height: calc(100vh - 60px);
+
   display: flex;
-  min-height: calc(100vh - 60px);
+
+  overflow: hidden;
 }
 
+
+/* ================================
+   SIDEBAR
+================================ */
+
 .sidebar {
-  width: 240px;
-  background: #151820;
-  border-right: 1px solid #2b2f38;
-  padding: 18px 12px;
+  width: 230px;
+  min-width: 230px;
+
+  background: #0d1117;
+  border-right: 1px solid #30363d;
+
+  padding: 15px 10px;
+
+  overflow-y: auto;
 }
 
 .sidebar h3 {
   margin: 0 0 18px 8px;
-  font-size: 13px;
+
+  font-size: 12px;
+  font-weight: 600;
+
   color: #8b949e;
-  letter-spacing: 1px;
 }
 
 .project-name {
   padding: 8px;
+
   font-size: 14px;
   font-weight: 600;
+
+  color: #c9d1d9;
 }
 
+
+/* ================================
+   FILES
+================================ */
+
 .file {
-  padding: 8px 12px;
-  margin: 3px 0;
+  min-height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 5px 7px;
+
+  margin: 2px 0;
+
   border-radius: 5px;
+
   font-size: 14px;
-  color: #c9d1d9;
+
   cursor: pointer;
 }
 
 .file:hover {
-  background: #222631;
+  background: #161b22;
 }
+
+.file-name {
+  flex: 1;
+
+  cursor: pointer;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* Selected File */
+
+.active-file {
+  background: #2a303b;
+
+  color: #ffffff;
+
+  border-left: 3px solid #58a6ff;
+
+  padding-left: 4px;
+}
+
+
+/* ================================
+   DELETE FILE BUTTON
+================================ */
+
+.delete-file {
+  background: transparent;
+
+  border: none;
+
+  color: #8b949e;
+
+  cursor: pointer;
+
+  font-size: 12px;
+
+  padding: 4px 6px;
+
+  border-radius: 4px;
+
+  display: none;
+}
+
+.file:hover .delete-file {
+  display: block;
+}
+
+.delete-file:hover {
+  background: #3d1d1d;
+  color: #ff6b6b;
+}
+
+
+/* ================================
+   NEW FILE BUTTON
+================================ */
 
 .new-file {
   width: 100%;
-  margin-top: 20px;
+
+  margin-top: 15px;
+
   padding: 9px;
 
-  background: #222631;
-  color: white;
+  background: #21262d;
 
-  border: 1px solid #343945;
+  color: #c9d1d9;
+
+  border: 1px solid #30363d;
+
   border-radius: 6px;
 
   cursor: pointer;
+
+  font-size: 13px;
 }
 
 .new-file:hover {
-  background: #2c313d;
+  background: #30363d;
 }
+
+
+/* ================================
+   CODE EDITOR
+================================ */
+
 .code-editor {
   flex: 1;
+
+  min-width: 0;
+
+  background: #1e1e1e;
+
   display: flex;
   flex-direction: column;
-  background: #0d1117;
 }
 
 .editor-header {
   height: 42px;
+
   display: flex;
   align-items: center;
-  padding: 0 16px;
+
+  padding: 0 14px;
 
   background: #161b22;
-  border-bottom: 1px solid #2b2f38;
 
-  color: #c9d1d9;
-  font-size: 14px;
+  border-bottom: 1px solid #30363d;
+
+  font-size: 13px;
 }
 
 
+/* ================================
+   OUTPUT PANEL
+================================ */
 
 .output-panel {
-  width: 300px;
+  width: 320px;
+  min-width: 320px;
+
   background: #11151c;
-  border-left: 1px solid #2b2f38;
+
+  border-left: 1px solid #30363d;
 
   display: flex;
   flex-direction: column;
@@ -162,41 +288,116 @@ body {
   padding: 0 14px;
 
   background: #161b22;
-  border-bottom: 1px solid #2b2f38;
+
+  border-bottom: 1px solid #30363d;
 
   font-size: 14px;
   font-weight: 600;
 }
 
 .output-header button {
-  background: #222631;
+  background: #21262d;
+
   color: #c9d1d9;
 
-  border: 1px solid #343945;
+  border: 1px solid #30363d;
+
   border-radius: 5px;
 
   padding: 5px 10px;
+
   cursor: pointer;
 }
 
 .output-header button:hover {
-  background: #2c313d;
+  background: #30363d;
 }
 
+
+/* ================================
+   OUTPUT CONTENT
+================================ */
+
 .output-content {
+  flex: 1;
+
   padding: 15px;
+
+  overflow-y: auto;
+
   color: #8b949e;
+
   font-family: monospace;
+
   font-size: 13px;
 }
+
+.output-content p {
+  margin: 0;
+}
+
 .output-content pre {
   margin: 0;
+
   white-space: pre-wrap;
+
+  word-break: break-word;
+
   font-family: monospace;
+
   color: #e6edf3;
+
+  line-height: 1.6;
 }
-.active-file {
-  background: #2a303b;
-  color: #ffffff;
-  border-left: 3px solid #58a6ff;
+
+
+/* ================================
+   SCROLLBAR
+================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 900px) {
+  .output-panel {
+    width: 260px;
+    min-width: 260px;
+  }
+
+  .sidebar {
+    width: 200px;
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 180px;
+    min-width: 180px;
+  }
+
+  .output-panel {
+    display: none;
+  }
 }

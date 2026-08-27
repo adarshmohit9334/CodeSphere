@@ -8,6 +8,7 @@ import OutputPanel from "./components/OutputPanel";
 import "./App.css";
 
 function App() {
+  // All project files
   const [files, setFiles] = useState([
     {
       name: "App.jsx",
@@ -38,13 +39,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     },
   ]);
 
+  // Currently selected file
   const [selectedFile, setSelectedFile] = useState("App.jsx");
 
+  // Currently displayed code
   const [code, setCode] = useState(files[0].code);
 
+  // Output
   const [output, setOutput] = useState("");
 
+  // --------------------------------
   // Run Code
+  // --------------------------------
+
   const runCode = () => {
     try {
       let result = "";
@@ -55,7 +62,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         },
       };
 
-      const executeCode = new Function("console", code);
+      const executeCode = new Function(
+        "console",
+        code
+      );
 
       executeCode(customConsole);
 
@@ -67,12 +77,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     }
   };
 
+  // --------------------------------
   // Clear Output
+  // --------------------------------
+
   const clearOutput = () => {
     setOutput("");
   };
 
+  // --------------------------------
   // Select File
+  // --------------------------------
+
   const handleFileSelect = (fileName) => {
     const selected = files.find(
       (file) => file.name === fileName
@@ -84,7 +100,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     }
   };
 
+  // --------------------------------
   // Change Code
+  // --------------------------------
+
   const handleCodeChange = (newCode) => {
     setCode(newCode);
 
@@ -100,31 +119,44 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     );
   };
 
+  // --------------------------------
+  // Detect File Language
+  // --------------------------------
+
   const getLanguageFromFileName = (fileName) => {
-  const extension = fileName.split(".").pop();
+    const extension = fileName
+      .split(".")
+      .pop()
+      .toLowerCase();
 
-  switch (extension) {
-    case "js":
-    case "jsx":
-      return "javascript";
+    switch (extension) {
+      case "js":
+      case "jsx":
+        return "javascript";
 
-    case "css":
-      return "css";
+      case "css":
+        return "css";
 
-    case "html":
-      return "html";
+      case "html":
+      case "htm":
+        return "html";
 
-    case "json":
-      return "json";
+      case "json":
+        return "json";
 
-    case "ts":
-    case "tsx":
-      return "typescript";
+      case "ts":
+      case "tsx":
+        return "typescript";
 
-    default:
-      return "plaintext";
-  }
-};
+      default:
+        return "plaintext";
+    }
+  };
+
+  // --------------------------------
+  // Create New File
+  // --------------------------------
+
   const handleCreateFile = () => {
     const fileName = prompt("Enter file name:");
 
@@ -132,8 +164,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       return;
     }
 
+    const trimmedName = fileName.trim();
+
+    if (!trimmedName) {
+      return;
+    }
+
     const fileExists = files.some(
-      (file) => file.name === fileName
+      (file) =>
+        file.name.toLowerCase() ===
+        trimmedName.toLowerCase()
     );
 
     if (fileExists) {
@@ -142,8 +182,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     }
 
     const newFile = {
-      name: fileName,
-      language: "javascript",
+      name: trimmedName,
+      language:
+        getLanguageFromFileName(trimmedName),
       code: "",
     };
 
@@ -152,8 +193,42 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       newFile,
     ]);
 
-    setSelectedFile(fileName);
+    setSelectedFile(trimmedName);
     setCode("");
+  };
+
+  // --------------------------------
+  // Delete File
+  // --------------------------------
+
+  const handleDeleteFile = (fileName) => {
+    // Don't allow deleting the last file
+    if (files.length === 1) {
+      alert("You cannot delete the last file.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${fileName}?`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    const updatedFiles = files.filter(
+      (file) => file.name !== fileName
+    );
+
+    setFiles(updatedFiles);
+
+    // If selected file was deleted
+    if (selectedFile === fileName) {
+      const firstFile = updatedFiles[0];
+
+      setSelectedFile(firstFile.name);
+      setCode(firstFile.code);
+    }
   };
 
   return (
@@ -161,11 +236,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Navbar runCode={runCode} />
 
       <div className="workspace">
+
         <Sidebar
           files={files}
           selectedFile={selectedFile}
           onFileSelect={handleFileSelect}
           onCreateFile={handleCreateFile}
+          onDeleteFile={handleDeleteFile}
         />
 
         <CodeEditor
@@ -177,6 +254,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           output={output}
           clearOutput={clearOutput}
         />
+
       </div>
     </>
   );
