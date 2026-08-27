@@ -1,4 +1,4 @@
-function Navbar() {
+function Navbar({ runCode }) {
   return (
     <header className="navbar">
       <div className="logo">
@@ -7,8 +7,16 @@ function Navbar() {
 
       <div className="navbar-actions">
         <button>My Projects</button>
+
         <button>💾 Save</button>
-        <button className="run-button">▶ Run</button>
+
+        <button
+          className="run-button"
+          onClick={runCode}
+        >
+          ▶ Run
+        </button>
+
         <button>👤</button>
       </div>
     </header>
