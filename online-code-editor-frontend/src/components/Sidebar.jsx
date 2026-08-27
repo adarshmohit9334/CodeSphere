@@ -4,6 +4,7 @@ function Sidebar({
   onFileSelect,
   onCreateFile,
   onDeleteFile,
+  onRenameFile,
 }) {
   return (
     <aside className="sidebar">
@@ -14,45 +15,60 @@ function Sidebar({
         📁 my-project
       </div>
 
-      {/* File List */}
+      {/* FILE LIST */}
 
-      {files.map((file) => (
-        <div
-          key={file.name}
-          className={`file ${
-            selectedFile === file.name
-              ? "active-file"
-              : ""
-          }`}
-        >
+      <div className="file-list">
 
-          {/* File Name */}
-
-          <span
-            className="file-name"
+        {files.map((file) => (
+          <div
+            key={file.name}
+            className={`file ${
+              selectedFile === file.name
+                ? "selected-file"
+                : ""
+            }`}
             onClick={() =>
               onFileSelect(file.name)
             }
           >
-            📄 {file.name}
-          </span>
 
-          {/* Delete Button */}
+            <span>
+              📄 {file.name}
+            </span>
 
-          <button
-            className="delete-file"
-            onClick={() =>
-              onDeleteFile(file.name)
-            }
-            title={`Delete ${file.name}`}
-          >
-            🗑
-          </button>
+            {/* FILE ACTIONS */}
 
-        </div>
-      ))}
+            <div className="file-actions">
 
-      {/* New File */}
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRenameFile(file.name);
+                }}
+                title="Rename"
+              >
+                ✏️
+              </button>
+
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteFile(file.name);
+                }}
+                title="Delete"
+              >
+                🗑️
+              </button>
+
+            </div>
+
+          </div>
+        ))}
+
+      </div>
+
+
+      {/* NEW FILE */}
 
       <button
         className="new-file"

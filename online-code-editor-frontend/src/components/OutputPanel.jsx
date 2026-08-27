@@ -1,6 +1,7 @@
 function OutputPanel({ output, clearOutput }) {
   return (
     <section className="output-panel">
+
       <div className="output-header">
         <span>Output</span>
 
@@ -13,9 +14,12 @@ function OutputPanel({ output, clearOutput }) {
         {output ? (
           <pre>{output}</pre>
         ) : (
-          <p>▶ Run your code to see the output here...</p>
+          <div className="empty-output">
+            Run your code to see the output here.
+          </div>
         )}
       </div>
+
     </section>
   );
 }
