@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import * as Babel from "@babel/standalone";
 
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import CodeEditor from "./components/CodeEditor";
 import OutputPanel from "./components/OutputPanel";
-
+import Preview from "./components/Preview";
 import "./App.css";
 
 // ========================================
@@ -697,59 +698,30 @@ function App() {
 
       <div className="workspace">
 
-        {/* SIDEBAR */}
+  <Sidebar
+    files={files}
+    selectedFile={selectedFile}
+    onFileSelect={handleFileSelect}
+    onCreateFile={handleCreateFile}
+    onDeleteFile={handleDeleteFile}
+    onRenameFile={handleRenameFile}
+  />
 
-        <Sidebar
-          files={files}
-          selectedFile={selectedFile}
-          onFileSelect={
-            handleFileSelect
-          }
-          onCreateFile={
-            handleCreateFile
-          }
-          onDeleteFile={
-            handleDeleteFile
-          }
-          onRenameFile={
-            handleRenameFile
-          }
-        />
+  <CodeEditor
+    code={code}
+    setCode={handleCodeChange}
+    selectedFile={selectedFile}
+    files={files}
+    openFiles={openFiles}
+    onFileSelect={handleFileSelect}
+    onCloseFile={handleCloseFile}
+  />
 
+  <Preview
+    files={files}
+  />
 
-        {/* CODE EDITOR */}
-
-        <CodeEditor
-          code={code}
-          setCode={
-            handleCodeChange
-          }
-          selectedFile={
-            selectedFile
-          }
-          files={files}
-          openFiles={
-            openFiles
-          }
-          onFileSelect={
-            handleFileSelect
-          }
-          onCloseFile={
-            handleCloseFile
-          }
-        />
-
-
-        {/* OUTPUT */}
-
-        <OutputPanel
-          output={output}
-          clearOutput={
-            clearOutput
-          }
-        />
-
-      </div>
+</div>
     </>
   );
 }
