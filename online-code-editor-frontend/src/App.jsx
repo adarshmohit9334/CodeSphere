@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import * as Babel from "@babel/standalone";
 
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import CodeEditor from "./components/CodeEditor";
-import OutputPanel from "./components/OutputPanel";
 import Preview from "./components/Preview";
+import OutputPanel from "./components/OutputPanel";
+
 import "./App.css";
 
+
 // ========================================
-// DEFAULT PROJECT FILES
+// DEFAULT FILES
 // ========================================
 
 const defaultFiles = [
@@ -17,10 +18,16 @@ const defaultFiles = [
     name: "App.jsx",
     language: "javascript",
     code: `function App() {
+  console.log("Hello from Console");
+
   return (
-    <h1>Hello World</h1>
+    <div>
+      <h1>Hello React 👋</h1>
+    </div>
   );
-}`,
+}
+
+export default App;`,
   },
 
   {
@@ -29,9 +36,9 @@ const defaultFiles = [
     code: `import React from "react";
 import ReactDOM from "react-dom/client";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <App />
-);`,
+ReactDOM.createRoot(
+  document.getElementById("root")
+).render(<App />);`,
   },
 
   {
@@ -39,9 +46,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     language: "css",
     code: `body {
   margin: 0;
+  padding: 20px;
   font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #61dafb;
 }`,
   },
+];
+
+
+// ========================================
+// DEFAULT PROJECTS
+// ========================================
+
+const defaultProjects = [
+  "My React Project",
+  "Untitled Project",
 ];
 
 
@@ -52,13 +74,52 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 function App() {
 
   // ======================================
-  // PROJECT FILES
+  // PROJECT LIST
+  // ======================================
+
+  const [projects, setProjects] = useState(() => {
+
+    const savedProjects =
+      localStorage.getItem(
+        "code-editor-projects"
+      );
+
+    return savedProjects
+      ? JSON.parse(savedProjects)
+      : defaultProjects;
+  });
+
+
+  // ======================================
+  // CURRENT PROJECT
+  // ======================================
+
+  const [currentProject, setCurrentProject] =
+    useState(() => {
+
+      return (
+        localStorage.getItem(
+          "code-editor-current-project"
+        ) || "My React Project"
+      );
+    });
+
+
+  // ======================================
+  // FILES
   // ======================================
 
   const [files, setFiles] = useState(() => {
-    const savedFiles = localStorage.getItem(
-      "code-editor-files"
-    );
+
+    const savedProject =
+      localStorage.getItem(
+        "code-editor-current-project"
+      ) || "My React Project";
+
+    const savedFiles =
+      localStorage.getItem(
+        `code-editor-files-${savedProject}`
+      );
 
     return savedFiles
       ? JSON.parse(savedFiles)
@@ -67,18 +128,26 @@ function App() {
 
 
   // ======================================
-  // OPEN TABS
+  // OPEN FILES
   // ======================================
 
-  const [openFiles, setOpenFiles] = useState(() => {
-    const savedOpenFiles = localStorage.getItem(
-      "code-editor-open-files"
-    );
+  const [openFiles, setOpenFiles] =
+    useState(() => {
 
-    return savedOpenFiles
-      ? JSON.parse(savedOpenFiles)
-      : ["App.jsx"];
-  });
+      const savedProject =
+        localStorage.getItem(
+          "code-editor-current-project"
+        ) || "My React Project";
+
+      const savedOpenFiles =
+        localStorage.getItem(
+          `code-editor-open-files-${savedProject}`
+        );
+
+      return savedOpenFiles
+        ? JSON.parse(savedOpenFiles)
+        : ["App.jsx"];
+    });
 
 
   // ======================================
@@ -87,14 +156,18 @@ function App() {
 
   const [selectedFile, setSelectedFile] =
     useState(() => {
+
+      const savedProject =
+        localStorage.getItem(
+          "code-editor-current-project"
+        ) || "My React Project";
+
       const savedSelectedFile =
         localStorage.getItem(
-          "code-editor-selected-file"
+          `code-editor-selected-file-${savedProject}`
         );
 
-      return (
-        savedSelectedFile || "App.jsx"
-      );
+      return savedSelectedFile || "App.jsx";
     });
 
 
@@ -103,27 +176,37 @@ function App() {
   // ======================================
 
   const [code, setCode] = useState(() => {
-    const savedFiles = localStorage.getItem(
-      "code-editor-files"
-    );
+
+    const savedProject =
+      localStorage.getItem(
+        "code-editor-current-project"
+      ) || "My React Project";
+
+    const savedFiles =
+      localStorage.getItem(
+        `code-editor-files-${savedProject}`
+      );
 
     const savedSelectedFile =
       localStorage.getItem(
-        "code-editor-selected-file"
-      );
+        `code-editor-selected-file-${savedProject}`
+      ) || "App.jsx";
+
 
     if (savedFiles) {
+
       const parsedFiles =
         JSON.parse(savedFiles);
 
-      const file = parsedFiles.find(
-        (item) =>
-          item.name ===
-          (savedSelectedFile || "App.jsx")
-      );
+      const selected =
+        parsedFiles.find(
+          (file) =>
+            file.name ===
+            savedSelectedFile
+        );
 
-      if (file) {
-        return file.code;
+      if (selected) {
+        return selected.code;
       }
     }
 
@@ -132,34 +215,61 @@ function App() {
 
 
   // ======================================
-  // OUTPUT
+  // CONSOLE
   // ======================================
 
-  const [output, setOutput] = useState("");
+  const [output, setOutput] =
+    useState("");
 
 
   // ======================================
-  // SAVE PROJECT FILES
+  // RUN
+  // ======================================
+
+  const [runCode, setRunCode] =
+    useState(0);
+
+
+  // ======================================
+  // SAVE PROJECT LIST
   // ======================================
 
   useEffect(() => {
+
     localStorage.setItem(
-      "code-editor-files",
+      "code-editor-projects",
+      JSON.stringify(projects)
+    );
+
+  }, [projects]);
+
+
+  // ======================================
+  // SAVE CURRENT PROJECT
+  // ======================================
+
+  useEffect(() => {
+
+    localStorage.setItem(
+      "code-editor-current-project",
+      currentProject
+    );
+
+  }, [currentProject]);
+
+
+  // ======================================
+  // SAVE FILES
+  // ======================================
+
+  useEffect(() => {
+
+    localStorage.setItem(
+      `code-editor-files-${currentProject}`,
       JSON.stringify(files)
     );
-  }, [files]);
 
-
-  // ======================================
-  // SAVE SELECTED FILE
-  // ======================================
-
-  useEffect(() => {
-    localStorage.setItem(
-      "code-editor-selected-file",
-      selectedFile
-    );
-  }, [selectedFile]);
+  }, [files, currentProject]);
 
 
   // ======================================
@@ -167,50 +277,578 @@ function App() {
   // ======================================
 
   useEffect(() => {
+
     localStorage.setItem(
-      "code-editor-open-files",
+      `code-editor-open-files-${currentProject}`,
       JSON.stringify(openFiles)
     );
-  }, [openFiles]);
+
+  }, [openFiles, currentProject]);
+
+
+  // ======================================
+  // SAVE SELECTED FILE
+  // ======================================
+
+  useEffect(() => {
+
+    if (!selectedFile) {
+      return;
+    }
+
+    localStorage.setItem(
+      `code-editor-selected-file-${currentProject}`,
+      selectedFile
+    );
+
+  }, [selectedFile, currentProject]);
+
+
+  // ======================================
+  // PROJECT SELECT
+  // ======================================
+
+  const handleProjectSelect = (
+    project
+  ) => {
+
+    // Save current project
+
+    localStorage.setItem(
+      `code-editor-files-${currentProject}`,
+      JSON.stringify(files)
+    );
+
+    localStorage.setItem(
+      `code-editor-open-files-${currentProject}`,
+      JSON.stringify(openFiles)
+    );
+
+    localStorage.setItem(
+      `code-editor-selected-file-${currentProject}`,
+      selectedFile
+    );
+
+
+    // Load selected project
+
+    const savedFiles =
+      localStorage.getItem(
+        `code-editor-files-${project}`
+      );
+
+    const savedOpenFiles =
+      localStorage.getItem(
+        `code-editor-open-files-${project}`
+      );
+
+    const savedSelectedFile =
+      localStorage.getItem(
+        `code-editor-selected-file-${project}`
+      );
+
+
+    const newFiles =
+      savedFiles
+        ? JSON.parse(savedFiles)
+        : defaultFiles.map(
+            (file) => ({
+              ...file,
+            })
+          );
+
+
+    const newOpenFiles =
+      savedOpenFiles
+        ? JSON.parse(savedOpenFiles)
+        : ["App.jsx"];
+
+
+    const newSelectedFile =
+      savedSelectedFile ||
+      "App.jsx";
+
+
+    const selectedData =
+      newFiles.find(
+        (file) =>
+          file.name ===
+          newSelectedFile
+      );
+
+
+    setCurrentProject(project);
+
+    setFiles(newFiles);
+
+    setOpenFiles(newOpenFiles);
+
+    setSelectedFile(
+      newSelectedFile
+    );
+
+    setCode(
+      selectedData
+        ? selectedData.code
+        : ""
+    );
+
+    setOutput(
+      `📁 Project loaded: ${project}`
+    );
+  };
+
+
+  // ======================================
+  // CREATE NEW PROJECT
+  // ======================================
+
+  const handleCreateProject = () => {
+
+    const projectName =
+      prompt(
+        "Enter new project name:"
+      );
+
+
+    if (!projectName) {
+      return;
+    }
+
+
+    const trimmedName =
+      projectName.trim();
+
+
+    if (!trimmedName) {
+      return;
+    }
+
+
+    // Check duplicate
+
+    const exists =
+      projects.some(
+        (project) =>
+          project.toLowerCase() ===
+          trimmedName.toLowerCase()
+      );
+
+
+    if (exists) {
+
+      alert(
+        "A project with this name already exists!"
+      );
+
+      return;
+    }
+
+
+    // Add project
+
+    setProjects(
+      (currentProjects) => [
+        ...currentProjects,
+        trimmedName,
+      ]
+    );
+
+
+    // Create fresh project files
+
+    const newProjectFiles =
+      defaultFiles.map(
+        (file) => ({
+          ...file,
+        })
+      );
+
+
+    // Save project
+
+    localStorage.setItem(
+      `code-editor-files-${trimmedName}`,
+      JSON.stringify(
+        newProjectFiles
+      )
+    );
+
+    localStorage.setItem(
+      `code-editor-open-files-${trimmedName}`,
+      JSON.stringify([
+        "App.jsx",
+      ])
+    );
+
+    localStorage.setItem(
+      `code-editor-selected-file-${trimmedName}`,
+      "App.jsx"
+    );
+
+
+    // Switch
+
+    setCurrentProject(
+      trimmedName
+    );
+
+    setFiles(
+      newProjectFiles
+    );
+
+    setOpenFiles([
+      "App.jsx",
+    ]);
+
+    setSelectedFile(
+      "App.jsx"
+    );
+
+    setCode(
+      newProjectFiles[0].code
+    );
+
+    setOutput(
+      `✅ New project created: ${trimmedName}`
+    );
+  };
+
+
+  // ======================================
+  // RENAME PROJECT
+  // ======================================
+
+  const handleRenameProject = () => {
+
+    const newProjectName =
+      prompt(
+        "Enter new project name:",
+        currentProject
+      );
+
+
+    if (!newProjectName) {
+      return;
+    }
+
+
+    const trimmedName =
+      newProjectName.trim();
+
+
+    if (!trimmedName) {
+      return;
+    }
+
+
+    if (
+      trimmedName ===
+      currentProject
+    ) {
+      return;
+    }
+
+
+    // Check duplicate
+
+    const exists =
+      projects.some(
+        (project) =>
+          project.toLowerCase() ===
+          trimmedName.toLowerCase()
+      );
+
+
+    if (exists) {
+
+      alert(
+        "A project with this name already exists!"
+      );
+
+      return;
+    }
+
+
+    // Save current project data
+
+    localStorage.setItem(
+      `code-editor-files-${currentProject}`,
+      JSON.stringify(files)
+    );
+
+    localStorage.setItem(
+      `code-editor-open-files-${currentProject}`,
+      JSON.stringify(openFiles)
+    );
+
+    localStorage.setItem(
+      `code-editor-selected-file-${currentProject}`,
+      selectedFile
+    );
+
+
+    // Rename localStorage keys
+
+    localStorage.setItem(
+      `code-editor-files-${trimmedName}`,
+      JSON.stringify(files)
+    );
+
+    localStorage.setItem(
+      `code-editor-open-files-${trimmedName}`,
+      JSON.stringify(openFiles)
+    );
+
+    localStorage.setItem(
+      `code-editor-selected-file-${trimmedName}`,
+      selectedFile
+    );
+
+
+    // Remove old keys
+
+    localStorage.removeItem(
+      `code-editor-files-${currentProject}`
+    );
+
+    localStorage.removeItem(
+      `code-editor-open-files-${currentProject}`
+    );
+
+    localStorage.removeItem(
+      `code-editor-selected-file-${currentProject}`
+    );
+
+
+    // Update project list
+
+    setProjects(
+      (currentProjects) =>
+        currentProjects.map(
+          (project) =>
+            project === currentProject
+              ? trimmedName
+              : project
+        )
+    );
+
+
+    setCurrentProject(
+      trimmedName
+    );
+
+
+    setOutput(
+      `✏️ Project renamed to: ${trimmedName}`
+    );
+  };
+
+
+  // ======================================
+  // DELETE PROJECT
+  // ======================================
+
+  const handleDeleteProject = () => {
+
+    // Prevent deleting last project
+
+    if (projects.length === 1) {
+
+      alert(
+        "You cannot delete the last project."
+      );
+
+      return;
+    }
+
+
+    const confirmed =
+      window.confirm(
+        `Are you sure you want to delete "${currentProject}"?`
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    // Delete project files
+
+    localStorage.removeItem(
+      `code-editor-files-${currentProject}`
+    );
+
+    localStorage.removeItem(
+      `code-editor-open-files-${currentProject}`
+    );
+
+    localStorage.removeItem(
+      `code-editor-selected-file-${currentProject}`
+    );
+
+
+    // Find remaining projects
+
+    const remainingProjects =
+      projects.filter(
+        (project) =>
+          project !== currentProject
+      );
+
+
+    const nextProject =
+      remainingProjects[0];
+
+
+    // Update projects
+
+    setProjects(
+      remainingProjects
+    );
+
+
+    // Load next project
+
+    const savedFiles =
+      localStorage.getItem(
+        `code-editor-files-${nextProject}`
+      );
+
+    const savedOpenFiles =
+      localStorage.getItem(
+        `code-editor-open-files-${nextProject}`
+      );
+
+    const savedSelectedFile =
+      localStorage.getItem(
+        `code-editor-selected-file-${nextProject}`
+      );
+
+
+    const nextFiles =
+      savedFiles
+        ? JSON.parse(savedFiles)
+        : defaultFiles.map(
+            (file) => ({
+              ...file,
+            })
+          );
+
+
+    const nextOpenFiles =
+      savedOpenFiles
+        ? JSON.parse(savedOpenFiles)
+        : ["App.jsx"];
+
+
+    const nextSelectedFile =
+      savedSelectedFile ||
+      "App.jsx";
+
+
+    const nextSelectedData =
+      nextFiles.find(
+        (file) =>
+          file.name ===
+          nextSelectedFile
+      );
+
+
+    setCurrentProject(
+      nextProject
+    );
+
+    setFiles(
+      nextFiles
+    );
+
+    setOpenFiles(
+      nextOpenFiles
+    );
+
+    setSelectedFile(
+      nextSelectedFile
+    );
+
+    setCode(
+      nextSelectedData
+        ? nextSelectedData.code
+        : ""
+    );
+
+    setOutput(
+      `🗑️ Project deleted. Switched to ${nextProject}`
+    );
+  };
 
 
   // ======================================
   // RUN CODE
   // ======================================
 
-  const runCode = () => {
-    try {
-      let result = "";
+  const handleRunCode = () => {
 
-      const customConsole = {
-        log: (...messages) => {
-          result +=
-            messages.join(" ") + "\n";
-        },
-      };
+    setOutput("");
 
-      const executeCode = new Function(
-        "console",
-        code
-      );
-
-      executeCode(customConsole);
-
-      setOutput(
-        result ||
-          "Code executed successfully."
-      );
-
-    } catch (error) {
-      setOutput(
-        "Error: " + error.message
-      );
-    }
+    setRunCode(
+      (previous) =>
+        previous + 1
+    );
   };
 
 
   // ======================================
-  // CLEAR OUTPUT
+  // SAVE PROJECT
+  // ======================================
+
+  const handleSaveCode = () => {
+
+    localStorage.setItem(
+      `code-editor-files-${currentProject}`,
+      JSON.stringify(files)
+    );
+
+    localStorage.setItem(
+      `code-editor-open-files-${currentProject}`,
+      JSON.stringify(openFiles)
+    );
+
+    localStorage.setItem(
+      `code-editor-selected-file-${currentProject}`,
+      selectedFile
+    );
+
+    alert(
+      `✅ ${currentProject} saved successfully!`
+    );
+  };
+
+
+  // ======================================
+  // CONSOLE MESSAGE
+  // ======================================
+
+  const handleConsoleMessage = (
+    message
+  ) => {
+
+    setOutput(
+      (currentOutput) => {
+
+        if (!currentOutput) {
+          return message;
+        }
+
+        return `${currentOutput}\n${message}`;
+      }
+    );
+  };
+
+
+  // ======================================
+  // CLEAR CONSOLE
   // ======================================
 
   const clearOutput = () => {
@@ -222,30 +860,36 @@ function App() {
   // SELECT FILE
   // ======================================
 
-  const handleFileSelect = (fileName) => {
+  const handleFileSelect = (
+    fileName
+  ) => {
 
-    const selected = files.find(
-      (file) =>
-        file.name === fileName
-    );
+    const selected =
+      files.find(
+        (file) =>
+          file.name === fileName
+      );
+
 
     if (!selected) {
       return;
     }
 
 
-    // Open tab if not already open
+    if (
+      !openFiles.includes(
+        fileName
+      )
+    ) {
 
-    if (!openFiles.includes(fileName)) {
-
-      setOpenFiles((currentFiles) => [
-        ...currentFiles,
-        fileName,
-      ]);
+      setOpenFiles(
+        (currentFiles) => [
+          ...currentFiles,
+          fileName,
+        ]
+      );
     }
 
-
-    // Select file
 
     setSelectedFile(
       fileName
@@ -267,37 +911,45 @@ function App() {
 
     setCode(newCode);
 
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.name === selectedFile
-          ? {
-              ...file,
-              code: newCode,
-            }
-          : file
-      )
+    setFiles(
+      (currentFiles) =>
+        currentFiles.map(
+          (file) =>
+            file.name === selectedFile
+              ? {
+                  ...file,
+                  code: newCode,
+                }
+              : file
+        )
     );
   };
 
 
   // ======================================
-  // DETECT LANGUAGE
+  // GET LANGUAGE
   // ======================================
 
   const getLanguageFromFileName = (
     fileName
   ) => {
 
-    const extension = fileName
-      .split(".")
-      .pop()
-      .toLowerCase();
+    const extension =
+      fileName
+        .split(".")
+        .pop()
+        .toLowerCase();
+
 
     switch (extension) {
 
       case "js":
       case "jsx":
         return "javascript";
+
+      case "ts":
+      case "tsx":
+        return "typescript";
 
       case "css":
         return "css";
@@ -308,10 +960,6 @@ function App() {
 
       case "json":
         return "json";
-
-      case "ts":
-      case "tsx":
-        return "typescript";
 
       case "xml":
         return "xml";
@@ -331,31 +979,35 @@ function App() {
 
   const handleCreateFile = () => {
 
-    const fileName = prompt(
-      "Enter file name:"
-    );
+    const fileName =
+      prompt(
+        "Enter file name:"
+      );
+
 
     if (!fileName) {
       return;
     }
 
+
     const trimmedName =
       fileName.trim();
+
 
     if (!trimmedName) {
       return;
     }
 
 
-    // Check duplicate
+    const exists =
+      files.some(
+        (file) =>
+          file.name.toLowerCase() ===
+          trimmedName.toLowerCase()
+      );
 
-    const fileExists = files.some(
-      (file) =>
-        file.name.toLowerCase() ===
-        trimmedName.toLowerCase()
-    );
 
-    if (fileExists) {
+    if (exists) {
 
       alert(
         "File already exists!"
@@ -364,8 +1016,6 @@ function App() {
       return;
     }
 
-
-    // Create file
 
     const newFile = {
       name: trimmedName,
@@ -379,18 +1029,20 @@ function App() {
     };
 
 
-    setFiles((currentFiles) => [
-      ...currentFiles,
-      newFile,
-    ]);
+    setFiles(
+      (currentFiles) => [
+        ...currentFiles,
+        newFile,
+      ]
+    );
 
 
-    // Open new file as tab
-
-    setOpenFiles((currentFiles) => [
-      ...currentFiles,
-      trimmedName,
-    ]);
+    setOpenFiles(
+      (currentFiles) => [
+        ...currentFiles,
+        trimmedName,
+      ]
+    );
 
 
     setSelectedFile(
@@ -419,17 +1071,16 @@ function App() {
     }
 
 
-    const confirmDelete =
+    const confirmed =
       window.confirm(
         `Are you sure you want to delete ${fileName}?`
       );
 
-    if (!confirmDelete) {
+
+    if (!confirmed) {
       return;
     }
 
-
-    // Delete from project files
 
     const updatedFiles =
       files.filter(
@@ -437,10 +1088,11 @@ function App() {
           file.name !== fileName
       );
 
-    setFiles(updatedFiles);
 
+    setFiles(
+      updatedFiles
+    );
 
-    // Remove from open tabs
 
     const updatedOpenFiles =
       openFiles.filter(
@@ -448,12 +1100,11 @@ function App() {
           file !== fileName
       );
 
+
     setOpenFiles(
       updatedOpenFiles
     );
 
-
-    // If deleted file was selected
 
     if (
       selectedFile === fileName
@@ -468,15 +1119,18 @@ function App() {
             updatedOpenFiles.length - 1
           ];
 
+
         const nextFileData =
           updatedFiles.find(
             (file) =>
               file.name === nextFile
           );
 
+
         setSelectedFile(
           nextFile
         );
+
 
         if (nextFileData) {
           setCode(
@@ -489,9 +1143,11 @@ function App() {
         const firstFile =
           updatedFiles[0];
 
+
         setSelectedFile(
           firstFile.name
         );
+
 
         setCode(
           firstFile.code
@@ -515,12 +1171,15 @@ function App() {
         oldFileName
       );
 
+
     if (!newFileName) {
       return;
     }
 
+
     const trimmedName =
       newFileName.trim();
+
 
     if (!trimmedName) {
       return;
@@ -528,21 +1187,22 @@ function App() {
 
 
     if (
-      trimmedName === oldFileName
+      trimmedName ===
+      oldFileName
     ) {
       return;
     }
 
 
-    // Check duplicate
+    const exists =
+      files.some(
+        (file) =>
+          file.name.toLowerCase() ===
+          trimmedName.toLowerCase()
+      );
 
-    const fileExists = files.some(
-      (file) =>
-        file.name.toLowerCase() ===
-        trimmedName.toLowerCase()
-    );
 
-    if (fileExists) {
+    if (exists) {
 
       alert(
         "A file with this name already exists!"
@@ -552,41 +1212,40 @@ function App() {
     }
 
 
-    // Rename project file
+    setFiles(
+      (currentFiles) =>
+        currentFiles.map(
+          (file) =>
+            file.name === oldFileName
+              ? {
+                  ...file,
 
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.name === oldFileName
-          ? {
-              ...file,
+                  name: trimmedName,
 
-              name: trimmedName,
-
-              language:
-                getLanguageFromFileName(
-                  trimmedName
-                ),
-            }
-          : file
-      )
+                  language:
+                    getLanguageFromFileName(
+                      trimmedName
+                    ),
+                }
+              : file
+        )
     );
 
 
-    // Rename open tab
-
-    setOpenFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file === oldFileName
-          ? trimmedName
-          : file
-      )
+    setOpenFiles(
+      (currentFiles) =>
+        currentFiles.map(
+          (file) =>
+            file === oldFileName
+              ? trimmedName
+              : file
+        )
     );
 
-
-    // Update selected file
 
     if (
-      selectedFile === oldFileName
+      selectedFile ===
+      oldFileName
     ) {
 
       setSelectedFile(
@@ -611,8 +1270,6 @@ function App() {
       );
 
 
-    // If closing inactive tab
-
     if (
       selectedFile !== fileName
     ) {
@@ -624,9 +1281,6 @@ function App() {
       return;
     }
 
-
-    // If closing active tab
-    // and no tabs remain
 
     if (
       remainingOpenFiles.length === 0
@@ -642,15 +1296,11 @@ function App() {
     }
 
 
-    // Find current tab index
-
     const currentIndex =
       openFiles.indexOf(
         fileName
       );
 
-
-    // Select next tab
 
     const nextFile =
       remainingOpenFiles[
@@ -679,6 +1329,7 @@ function App() {
 
 
     if (nextFileData) {
+
       setCode(
         nextFileData.code
       );
@@ -693,37 +1344,100 @@ function App() {
   return (
     <>
       <Navbar
-        runCode={runCode}
+        runCode={handleRunCode}
+        saveCode={handleSaveCode}
+        currentProject={
+          currentProject
+        }
+        projects={projects}
+        onProjectSelect={
+          handleProjectSelect
+        }
+        onCreateProject={
+          handleCreateProject
+        }
+        onRenameProject={
+          handleRenameProject
+        }
+        onDeleteProject={
+          handleDeleteProject
+        }
       />
+
 
       <div className="workspace">
 
-  <Sidebar
-    files={files}
-    selectedFile={selectedFile}
-    onFileSelect={handleFileSelect}
-    onCreateFile={handleCreateFile}
-    onDeleteFile={handleDeleteFile}
-    onRenameFile={handleRenameFile}
-  />
+        {/* SIDEBAR */}
 
-  <CodeEditor
-    code={code}
-    setCode={handleCodeChange}
-    selectedFile={selectedFile}
-    files={files}
-    openFiles={openFiles}
-    onFileSelect={handleFileSelect}
-    onCloseFile={handleCloseFile}
-  />
+        <Sidebar
+          files={files}
+          selectedFile={
+            selectedFile
+          }
+          onFileSelect={
+            handleFileSelect
+          }
+          onCreateFile={
+            handleCreateFile
+          }
+          onDeleteFile={
+            handleDeleteFile
+          }
+          onRenameFile={
+            handleRenameFile
+          }
+        />
 
-  <Preview
-    files={files}
-  />
 
-</div>
+        {/* CODE EDITOR */}
+
+        <CodeEditor
+          code={code}
+          setCode={
+            handleCodeChange
+          }
+          selectedFile={
+            selectedFile
+          }
+          files={files}
+          openFiles={
+            openFiles
+          }
+          onFileSelect={
+            handleFileSelect
+          }
+          onCloseFile={
+            handleCloseFile
+          }
+        />
+
+
+        {/* RIGHT PANEL */}
+
+        <div className="right-panel">
+
+          <Preview
+            files={files}
+            onConsoleMessage={
+              handleConsoleMessage
+            }
+            runCode={runCode}
+          />
+
+
+          <OutputPanel
+            output={output}
+            clearOutput={
+              clearOutput
+            }
+          />
+
+        </div>
+
+      </div>
     </>
   );
 }
+
 
 export default App;

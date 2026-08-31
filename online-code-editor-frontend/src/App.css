@@ -1,229 +1,575 @@
-/* ================================
+/* ========================================
    GLOBAL
-================================ */
+======================================== */
 
 * {
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
-  font-family: Arial, sans-serif;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
   background: #0d1117;
-  color: #c9d1d9;
+  color: #e6edf3;
 }
 
 
-/* ================================
+/* ========================================
    NAVBAR
-================================ */
+======================================== */
 
 .navbar {
-  height: 60px;
+  height: 62px;
+  width: 100%;
+
   background: #161b22;
-  border-bottom: 1px solid #30363d;
+
+  border-bottom:
+    1px solid #30363d;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
   padding: 0 18px;
+
+  position: relative;
+  z-index: 1000;
 }
+
+
+/* ========================================
+   LOGO
+======================================== */
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
 
-  font-size: 18px;
-  font-weight: 600;
+  gap: 9px;
+
+  font-size: 21px;
+  font-weight: 700;
+
+  color: #e6edf3;
 }
+
+.logo span {
+  letter-spacing: 0.2px;
+}
+
+
+/* ========================================
+   NAVBAR ACTIONS
+======================================== */
 
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+
+  gap: 8px;
 }
 
 .navbar-actions button {
+  height: 36px;
+
+  padding: 0 14px;
+
+  border:
+    1px solid #30363d;
+
+  border-radius: 7px;
+
   background: #21262d;
-  color: #c9d1d9;
 
-  border: 1px solid #30363d;
-  border-radius: 6px;
+  color: #e6edf3;
 
-  padding: 7px 12px;
+  font-size: 14px;
 
   cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .navbar-actions button:hover {
   background: #30363d;
-}
 
-.navbar-actions .run-button {
-  background: #238636;
-  color: white;
-  border: 1px solid #2ea043;
-}
-
-.navbar-actions .run-button:hover {
-  background: #2ea043;
+  border-color: #484f58;
 }
 
 
-/* ================================
-   MAIN WORKSPACE
-================================ */
+/* ========================================
+   PROJECTS WRAPPER
+======================================== */
 
-.workspace {
-  height: calc(100vh - 60px);
+.projects-wrapper {
+  position: relative;
+}
 
-  display: flex;
-
-  overflow: hidden;
+.projects-button {
+  min-width: 125px;
 }
 
 
-/* ================================
-   SIDEBAR
-================================ */
+/* ========================================
+   CURRENT PROJECT
+======================================== */
 
-.sidebar {
-  width: 230px;
-  min-width: 230px;
+.current-project {
+  max-width: 180px;
 
-  background: #0d1117;
-  border-right: 1px solid #30363d;
-
-  padding: 15px 10px;
-
-  overflow-y: auto;
-}
-
-.sidebar h3 {
-  margin: 0 0 18px 8px;
-
-  font-size: 12px;
-  font-weight: 600;
+  padding: 0 8px;
 
   color: #8b949e;
+
+  font-size: 13px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
 }
 
-.project-name {
-  padding: 8px;
 
-  font-size: 14px;
-  font-weight: 600;
+/* ========================================
+   PROJECT DROPDOWN
+======================================== */
 
-  color: #c9d1d9;
+.projects-dropdown {
+  position: absolute;
+
+  top: 45px;
+  right: 0;
+
+  width: 285px;
+
+  background: #161b22;
+
+  border:
+    1px solid #30363d;
+
+  border-radius: 9px;
+
+  box-shadow:
+    0 12px 30px
+    rgba(0, 0, 0, 0.5);
+
+  overflow: hidden;
+
+  z-index: 2000;
 }
 
 
-/* ================================
-   FILES
-================================ */
+/* ========================================
+   DROPDOWN HEADER
+======================================== */
 
-.file {
-  min-height: 34px;
+.projects-dropdown-header {
+  height: 48px;
+
+  padding: 0 15px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 5px 7px;
+  font-size: 14px;
+  font-weight: 700;
 
-  margin: 2px 0;
+  color: #e6edf3;
+
+  background: #1c2128;
+
+  border-bottom:
+    1px solid #30363d;
+}
+
+.project-count {
+  min-width: 22px;
+  height: 22px;
+
+  padding: 0 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #30363d;
+
+  color: #8b949e;
+
+  font-size: 12px;
+}
+
+
+/* ========================================
+   PROJECT LIST
+======================================== */
+
+.projects-list {
+  max-height: 250px;
+
+  overflow-y: auto;
+}
+
+
+/* ========================================
+   PROJECT ITEM
+======================================== */
+
+.project-item {
+  padding: 0;
+
+  border-bottom:
+    1px solid #21262d;
+}
+
+.project-item:last-child {
+  border-bottom: none;
+}
+
+
+/* ========================================
+   PROJECT SELECT
+======================================== */
+
+.project-select {
+  width: 100%;
+
+  min-height: 62px;
+
+  padding: 9px 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease;
+}
+
+.project-select:hover {
+  background: #21262d;
+}
+
+.active-project .project-select {
+  background: #1c2128;
+}
+
+.active-project .project-select:hover {
+  background: #21262d;
+}
+
+
+/* ========================================
+   PROJECT INFO
+======================================== */
+
+.project-info {
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  min-width: 0;
+}
+
+.project-icon {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 6px;
+
+  background: #21262d;
+
+  font-size: 15px;
+}
+
+
+/* ========================================
+   PROJECT TEXT
+======================================== */
+
+.project-text {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+
+  min-width: 0;
+}
+
+.project-title {
+  color: #e6edf3;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+.project-subtitle {
+  color: #8b949e;
+
+  font-size: 11px;
+}
+
+
+/* ========================================
+   PROJECT CHECK
+======================================== */
+
+.project-check {
+  color: #3fb950;
+
+  font-size: 16px;
+
+  font-weight: 700;
+
+  padding-left: 8px;
+}
+
+
+/* ========================================
+   PROJECT DIVIDER
+======================================== */
+
+.project-divider {
+  height: 1px;
+
+  background: #30363d;
+
+  margin: 0;
+}
+
+
+/* ========================================
+   PROJECT ACTIONS
+======================================== */
+
+.project-actions {
+  padding: 5px 0;
+}
+
+.project-action-item,
+.new-project-item {
+  min-height: 40px;
+
+  padding: 0 15px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  font-size: 13px;
+
+  color: #c9d1d9;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.project-action-item:hover {
+  background: #21262d;
+
+  color: #ffffff;
+}
+
+.delete-project:hover {
+  color: #f85149;
+
+  background: #211d1d;
+}
+
+.new-project-item {
+  color: #58a6ff;
+}
+
+.new-project-item:hover {
+  background: #21262d;
+
+  color: #79c0ff;
+}
+
+
+/* ========================================
+   SAVE BUTTON
+======================================== */
+
+.save-button {
+  min-width: 78px;
+}
+
+
+/* ========================================
+   RUN BUTTON
+======================================== */
+
+.run-button {
+  min-width: 72px;
+
+  background:
+    #238636 !important;
+
+  border-color:
+    #2ea043 !important;
+
+  color:
+    white !important;
+
+  font-weight: 600;
+}
+
+.run-button:hover {
+  background:
+    #2ea043 !important;
+}
+
+
+/* ========================================
+   USER BUTTON
+======================================== */
+
+.user-button {
+  width: 42px;
+
+  padding: 0 !important;
+
+  font-size: 16px !important;
+}
+
+
+/* ========================================
+   MAIN WORKSPACE
+======================================== */
+
+.workspace {
+  width: 100%;
+
+  height:
+    calc(100vh - 62px);
+
+  display: flex;
+
+  overflow: hidden;
+}
+
+
+/* ========================================
+   SIDEBAR
+======================================== */
+
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+
+  height: 100%;
+
+  background: #0d1117;
+
+  border-right:
+    1px solid #30363d;
+
+  padding: 22px 14px;
+
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin: 0 0 28px 10px;
+
+  font-size: 13px;
+
+  letter-spacing: 1px;
+
+  color: #8b949e;
+}
+
+.project-name {
+  padding: 8px 10px;
+
+  margin-bottom: 10px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #c9d1d9;
+}
+
+.file {
+  padding: 10px 12px;
+
+  margin: 3px 0;
 
   border-radius: 5px;
 
   font-size: 14px;
 
+  color: #c9d1d9;
+
   cursor: pointer;
 }
 
 .file:hover {
-  background: #161b22;
-}
-
-.file-name {
-  flex: 1;
-
-  cursor: pointer;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  background: #21262d;
 }
 
 
-/* Selected File */
-
-.active-file {
-  background: #2a303b;
-
-  color: #ffffff;
-
-  border-left: 3px solid #58a6ff;
-
-  padding-left: 4px;
-}
-
-
-/* ================================
-   DELETE FILE BUTTON
-================================ */
-
-.delete-file {
-  background: transparent;
-
-  border: none;
-
-  color: #8b949e;
-
-  cursor: pointer;
-
-  font-size: 12px;
-
-  padding: 4px 6px;
-
-  border-radius: 4px;
-
-  display: none;
-}
-
-.file:hover .delete-file {
-  display: block;
-}
-
-.delete-file:hover {
-  background: #3d1d1d;
-  color: #ff6b6b;
-}
-
-
-/* ================================
+/* ========================================
    NEW FILE BUTTON
-================================ */
+======================================== */
 
 .new-file {
   width: 100%;
 
-  margin-top: 15px;
+  margin-top: 25px;
 
-  padding: 9px;
+  padding: 10px;
+
+  border:
+    1px solid #30363d;
+
+  border-radius: 6px;
 
   background: #21262d;
 
   color: #c9d1d9;
 
-  border: 1px solid #30363d;
-
-  border-radius: 6px;
-
   cursor: pointer;
-
-  font-size: 13px;
 }
 
 .new-file:hover {
@@ -231,129 +577,380 @@ body {
 }
 
 
-/* ================================
+/* ========================================
    CODE EDITOR
-================================ */
+======================================== */
 
 .code-editor {
   flex: 1;
 
   min-width: 0;
 
+  height: 100%;
+
   background: #1e1e1e;
 
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
 }
 
-.editor-header {
+
+/* ========================================
+   EDITOR TABS
+======================================== */
+
+.editor-tabs {
   height: 42px;
 
   display: flex;
+  align-items: stretch;
+
+  background: #161b22;
+
+  border-bottom:
+    1px solid #30363d;
+
+  overflow-x: auto;
+}
+
+.editor-tab {
+  min-width: 120px;
+
+  height: 42px;
+
+  padding: 0 8px 0 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 8px;
+
+  color: #8b949e;
+
+  background: #161b22;
+
+  border-right:
+    1px solid #30363d;
+
+  cursor: pointer;
+}
+
+.editor-tab:hover {
+  background: #21262d;
+
+  color: #c9d1d9;
+}
+
+.active-tab {
+  background: #1e1e1e;
+
+  color: #e6edf3;
+
+  border-top:
+    2px solid #58a6ff;
+}
+
+.tab-name {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+}
+
+.close-tab {
+  width: 22px;
+  height: 22px;
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 4px;
+
+  background: transparent;
+
+  color: #8b949e;
+
+  font-size: 18px;
+
+  line-height: 20px;
+
+  cursor: pointer;
+}
+
+.close-tab:hover {
+  background: #30363d;
+
+  color: #ffffff;
+}
+
+
+/* ========================================
+   RIGHT PANEL
+======================================== */
+
+.right-panel {
+  width: 335px;
+  min-width: 335px;
+
+  height: 100%;
+
+  background: #0d1117;
+
+  border-left:
+    1px solid #30363d;
+
+  display: flex;
+
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+
+/* ========================================
+   PREVIEW
+======================================== */
+
+.preview {
+  width: 100%;
+
+  height: 48%;
+
+  min-height: 230px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  background: #0d1117;
+}
+
+.preview-header {
+  height: 42px;
+
+  min-height: 42px;
+
+  display: flex;
+
   align-items: center;
 
   padding: 0 14px;
 
   background: #161b22;
 
-  border-bottom: 1px solid #30363d;
+  border-bottom:
+    1px solid #30363d;
 
-  font-size: 13px;
+  color: #c9d1d9;
+
+  font-size: 16px;
+
+  font-weight: 600;
+}
+
+.preview-frame {
+  width:
+    calc(100% - 10px);
+
+  flex: 1;
+
+  margin: 5px;
+
+  border:
+    1px solid #30363d;
+
+  background: white;
 }
 
 
-/* ================================
-   OUTPUT PANEL
-================================ */
+/* ========================================
+   OUTPUT / CONSOLE
+======================================== */
 
 .output-panel {
-  width: 320px;
-  min-width: 320px;
+  flex: 1;
 
-  background: #11151c;
+  min-height: 0;
 
-  border-left: 1px solid #30363d;
+  background: #0d1117;
 
-  display: flex;
-  flex-direction: column;
+  border-top:
+    1px solid #30363d;
+
+  overflow: hidden;
 }
 
 .output-header {
   height: 42px;
 
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
 
-  padding: 0 14px;
+  padding: 0 12px;
 
   background: #161b22;
 
-  border-bottom: 1px solid #30363d;
-
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.output-header button {
-  background: #21262d;
+  border-bottom:
+    1px solid #30363d;
 
   color: #c9d1d9;
+}
 
-  border: 1px solid #30363d;
+.output-title {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+.clear-output {
+  padding: 5px 10px;
+
+  border:
+    1px solid #30363d;
 
   border-radius: 5px;
 
-  padding: 5px 10px;
+  background: #21262d;
+
+  color: #8b949e;
 
   cursor: pointer;
 }
 
-.output-header button:hover {
+.clear-output:hover {
   background: #30363d;
+
+  color: #e6edf3;
 }
 
-
-/* ================================
-   OUTPUT CONTENT
-================================ */
-
 .output-content {
-  flex: 1;
+  height:
+    calc(100% - 42px);
 
-  padding: 15px;
+  padding: 12px;
 
   overflow-y: auto;
 
-  color: #8b949e;
-
-  font-family: monospace;
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
 
   font-size: 13px;
-}
 
-.output-content p {
-  margin: 0;
+  line-height: 1.7;
+
+  color: #c9d1d9;
+
+  white-space: pre-wrap;
 }
 
 .output-content pre {
   margin: 0;
 
+  font-family: inherit;
+
   white-space: pre-wrap;
 
   word-break: break-word;
+}
 
-  font-family: monospace;
+.empty-output {
+  display: flex;
 
-  color: #e6edf3;
+  align-items: center;
 
-  line-height: 1.6;
+  gap: 8px;
+
+  color: #6e7681;
+}
+
+.empty-output span:first-child {
+  color: #58a6ff;
+
+  font-size: 18px;
 }
 
 
-/* ================================
+/* ========================================
+   FILE ACTIONS
+======================================== */
+
+.file {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 8px;
+}
+
+.file > span {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+}
+
+.file-actions {
+  display: flex;
+
+  gap: 2px;
+
+  opacity: 0;
+}
+
+.file:hover .file-actions,
+.selected-file .file-actions {
+  opacity: 1;
+}
+
+.file-actions button {
+  width: 25px;
+  height: 25px;
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 4px;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  font-size: 12px;
+}
+
+.file-actions button:hover {
+  background: #30363d;
+}
+
+
+/* ========================================
+   SELECTED FILE
+======================================== */
+
+.selected-file {
+  background: #21262d;
+
+  color: #ffffff;
+}
+
+
+/* ========================================
    SCROLLBAR
-================================ */
+======================================== */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -367,7 +964,7 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #30363d;
 
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -375,250 +972,40 @@ body {
 }
 
 
-/* ================================
+/* ========================================
    RESPONSIVE
-================================ */
+======================================== */
 
 @media (max-width: 900px) {
-  .output-panel {
-    width: 260px;
-    min-width: 260px;
-  }
 
   .sidebar {
-    width: 200px;
-    min-width: 200px;
-  }
-}
-
-@media (max-width: 700px) {
-  .sidebar {
-    width: 180px;
-    min-width: 180px;
+    width: 190px;
+    min-width: 190px;
   }
 
-  .output-panel {
+  .right-panel {
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .current-project {
     display: none;
   }
 }
-.context-menu {
-  position: fixed;
 
-  min-width: 150px;
 
-  background: #161b22;
+@media (max-width: 700px) {
 
-  border: 1px solid #30363d;
+  .sidebar {
+    width: 170px;
+    min-width: 170px;
+  }
 
-  border-radius: 6px;
-
-  padding: 5px;
-
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-
-  z-index: 1000;
-}
-
-.context-menu button {
-  width: 100%;
-
-  display: block;
-
-  padding: 8px 10px;
-
-  background: transparent;
-
-  border: none;
-
-  border-radius: 4px;
-
-  color: #c9d1d9;
-
-  text-align: left;
-
-  cursor: pointer;
-
-  font-size: 13px;
-}
-
-.context-menu button:hover {
-  background: #30363d;
-}
-/* ================================
-   EDITOR TABS
-================================ */
-
-.editor-tabs {
-  height: 42px;
-
-  display: flex;
-
-  align-items: stretch;
-
-  background: #161b22;
-
-  border-bottom: 1px solid #30363d;
-
-  overflow-x: auto;
-
-  overflow-y: hidden;
-}
-
-.editor-tab {
-  min-width: 130px;
-
-  max-width: 200px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  gap: 10px;
-
-  padding: 0 10px;
-
-  background: #161b22;
-
-  border-right: 1px solid #30363d;
-
-  color: #8b949e;
-
-  font-size: 13px;
-
-  cursor: pointer;
-
-  user-select: none;
-}
-
-.editor-tab:hover {
-  background: #21262d;
-
-  color: #c9d1d9;
-}
-
-.active-tab {
-  background: #1e1e1e;
-
-  color: #ffffff;
-
-  border-top: 2px solid #58a6ff;
-}
-
-.tab-name {
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
-}
-
-.close-tab {
-  background: transparent;
-
-  border: none;
-
-  color: #8b949e;
-
-  font-size: 17px;
-
-  line-height: 1;
-
-  cursor: pointer;
-
-  padding: 2px 4px;
-
-  border-radius: 4px;
-}
-
-.close-tab:hover {
-  background: #30363d;
-
-  color: #ffffff;
-}
-/* ========================================
-   SIDEBAR FILES
-======================================== */
-
-.file-list {
-  margin-top: 10px;
-}
-
-.file {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 8px 10px;
-
-  margin: 2px 8px;
-
-  border-radius: 5px;
-
-  color: #c9d1d9;
-
-  font-size: 14px;
-
-  cursor: pointer;
-}
-
-.file:hover {
-  background: #21262d;
-}
-
-.selected-file {
-  background: #30363d;
-
-  color: #ffffff;
-}
-
-.file-actions {
-  display: none;
-
-  gap: 4px;
-}
-
-.file:hover .file-actions {
-  display: flex;
-}
-
-.file-actions button {
-  background: transparent;
-
-  border: none;
-
-  cursor: pointer;
-
-  padding: 2px;
-
-  font-size: 12px;
-}
-
-.file-actions button:hover {
-  transform: scale(1.15);
-}
-
-.new-file {
-  width: calc(100% - 16px);
-
-  margin: 15px 8px;
-
-  padding: 9px;
-
-  background: #21262d;
-
-  border: 1px solid #30363d;
-
-  border-radius: 5px;
-
-  color: #c9d1d9;
-
-  cursor: pointer;
-}
-
-.new-file:hover {
-  background: #30363d;
-
-  color: #ffffff;
+  .right-panel {
+    display: none;
+  }
 }

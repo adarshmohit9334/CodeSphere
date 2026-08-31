@@ -9,13 +9,21 @@ function CodeEditor({
   onFileSelect,
   onCloseFile,
 }) {
+  const selectedFileData = files.find(
+    (file) => file.name === selectedFile
+  );
+
   return (
     <main className="code-editor">
 
+      {/* ================================= */}
       {/* FILE TABS */}
+      {/* ================================= */}
+
       <div className="editor-tabs">
 
         {openFiles.map((fileName) => {
+
           const file = files.find(
             (item) => item.name === fileName
           );
@@ -42,9 +50,11 @@ function CodeEditor({
               </span>
 
               <button
+                type="button"
                 className="close-tab"
                 onClick={(event) => {
                   event.stopPropagation();
+
                   onCloseFile(fileName);
                 }}
                 title={`Close ${fileName}`}
@@ -59,15 +69,15 @@ function CodeEditor({
       </div>
 
 
+      {/* ================================= */}
       {/* MONACO EDITOR */}
+      {/* ================================= */}
 
       <Editor
-        height="calc(100vh - 102px)"
+        height="100%"
         language={
-          files.find(
-            (file) =>
-              file.name === selectedFile
-          )?.language || "javascript"
+          selectedFileData?.language ||
+          "javascript"
         }
         theme="vs-dark"
         value={code}
