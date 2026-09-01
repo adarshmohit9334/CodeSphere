@@ -9,6 +9,10 @@ import Preview from "./components/Preview";
 import OutputPanel from "./components/OutputPanel";
 import StatusBar from "./components/StatusBar";
 
+import Dashboard from "./components/Dashboard";
+import AiAssistantPanel from "./components/AiAssistantPanel";
+import InputDialogModal from "./components/InputDialogModal";
+
 import "./App.css";
 
 const API_BASE = "http://localhost:5000/api";
@@ -17,7 +21,7 @@ const defaultFiles = [
   {
     name: "App.jsx",
     language: "javascript",
-    code: `function App() {\n  console.log("Hello from VS Code Online Editor!");\n\n  return (\n    <div className="container">\n      <h1>Hello React 👋</h1>\n      <p>Welcome to your VS Code Web Code Editor.</p>\n    </div>\n  );\n}\n\nexport default App;`
+    code: `function App() {\n  console.log("Hello from Code Sphere!");\n\n  return (\n    <div className="container">\n      <h1>Hello React 👋</h1>\n      <p>Welcome to Code Sphere Editor.</p>\n    </div>\n  );\n}\n\nexport default App;`
   },
   {
     name: "main.jsx",
@@ -35,8 +39,17 @@ const defaultProjects = ["My React Project", "Untitled Project"];
 
 function App() {
   // State
+  const [viewMode, setViewMode] = useState("editor"); // 'editor' | 'dashboard'
   const [activeTab, setActiveTab] = useState("explorer"); // 'explorer' | 'search' | 'debug'
-  const [theme, setTheme] = useState("vs-dark");
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("code-editor-theme") || "vs-light";
+  });
+
+  // Save theme preference to LocalStorage
+  useEffect(() => {
+    localStorage.setItem("code-editor-theme", theme);
+  }, [theme]);
+
   const [backendStatus, setBackendStatus] = useState(false);
 
   const [projects, setProjects] = useState(() => {
@@ -151,52 +164,84 @@ function App() {
     setOutput(`📁 Project loaded: ${project}`);
   };
 
+  // Custom Input Modal State
+  const [inputModal, setInputModal] = useState({
+    isOpen: false,
+    title: "",
+    placeholder: "",
+    defaultValue: "",
+    onSubmit: () => {}
+  });
+
+  const openInputModal = (title, placeholder, defaultValue, onSubmit, isConfirm = false, confirmText = "") => {
+    setInputModal({
+      isOpen: true,
+      title,
+      placeholder,
+      defaultValue,
+      isConfirm,
+      confirmText,
+      onSubmit
+    });
+  };
+
+  const closeInputModal = () => {
+    setInputModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // Create Project
   const handleCreateProject = () => {
-    const projectName = prompt("Enter new project name:");
-    if (!projectName || !projectName.trim()) return;
-    const trimmed = projectName.trim();
+    openInputModal(
+      "➕ Create New Project",
+      "Enter project name (e.g. Portfolio App)",
+      "",
+      (projectName) => {
+        if (projects.some((p) => p.toLowerCase() === projectName.toLowerCase())) {
+          alert("A project with this name already exists!");
+          return;
+        }
 
-    if (projects.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
-      alert("A project with this name already exists!");
-      return;
-    }
+        const newProjectFiles = defaultFiles.map((file) => ({ ...file }));
+        setProjects((prev) => [...prev, projectName]);
+        setCurrentProject(projectName);
+        setFiles(newProjectFiles);
+        setOpenFiles(["App.jsx"]);
+        setSelectedFile("App.jsx");
+        setCode(newProjectFiles[0].code);
+        setDirtyFiles([]);
+        setOutput(`✅ New project created: ${projectName}`);
 
-    const newProjectFiles = defaultFiles.map((file) => ({ ...file }));
-    setProjects((prev) => [...prev, trimmed]);
-    setCurrentProject(trimmed);
-    setFiles(newProjectFiles);
-    setOpenFiles(["App.jsx"]);
-    setSelectedFile("App.jsx");
-    setCode(newProjectFiles[0].code);
-    setDirtyFiles([]);
-    setOutput(`✅ New project created: ${trimmed}`);
-
-    // Push to backend if connected
-    if (backendStatus) {
-      fetch(`${API_BASE}/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed, files: newProjectFiles })
-      }).catch((err) => console.warn("Backend sync failed:", err));
-    }
+        // Push to backend if connected
+        if (backendStatus) {
+          fetch(`${API_BASE}/projects`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: projectName, files: newProjectFiles })
+          }).catch((err) => console.warn("Backend sync failed:", err));
+        }
+      }
+    );
   };
 
   // Rename Project
   const handleRenameProject = () => {
-    const newName = prompt("Enter new project name:", currentProject);
-    if (!newName || !newName.trim() || newName.trim() === currentProject) return;
-    const trimmed = newName.trim();
+    openInputModal(
+      `✏️ Rename Project: ${currentProject}`,
+      "Enter new project name",
+      currentProject,
+      (newName) => {
+        if (newName === currentProject) return;
+        if (projects.some((p) => p.toLowerCase() === newName.toLowerCase())) {
+          alert("A project with this name already exists!");
+          return;
+        }
 
-    if (projects.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
-      alert("A project with this name already exists!");
-      return;
-    }
-
-    setProjects((prev) => prev.map((p) => (p === currentProject ? trimmed : p)));
-    setCurrentProject(trimmed);
-    setDirtyFiles([]);
-    setOutput(`✏️ Project renamed to: ${trimmed}`);
+        setProjects((prev) => prev.map((p) => (p === currentProject ? newName : p)));
+        setCurrentProject(newName);
+        setDirtyFiles([]);
+        setOutput(`✏️ Project renamed to: ${newName}`);
+      }
+    );
   };
 
   // Delete Project
@@ -206,14 +251,21 @@ function App() {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete "${currentProject}"?`)) return;
+    openInputModal(
+      `🗑️ Delete Project`,
+      "",
+      "",
+      () => {
+        const remaining = projects.filter((p) => p !== currentProject);
+        const nextProject = remaining[0];
+        setProjects(remaining);
 
-    const remaining = projects.filter((p) => p !== currentProject);
-    const nextProject = remaining[0];
-    setProjects(remaining);
-
-    handleProjectSelect(nextProject);
-    setOutput(`🗑️ Project deleted. Switched to ${nextProject}`);
+        handleProjectSelect(nextProject);
+        setOutput(`🗑️ Project deleted. Switched to ${nextProject}`);
+      },
+      true,
+      `Are you sure you want to delete project "${currentProject}"? All project files will be permanently removed.`
+    );
   };
 
   // Save Code
@@ -236,24 +288,9 @@ function App() {
 
   // Run Code
   const handleRunCode = useCallback(() => {
+    setOutput("");
     setRunCode((prev) => prev + 1);
-
-    // Also attempt backend server-side execution check if connected
-    if (backendStatus && selectedFile && selectedFile.endsWith(".js")) {
-      fetch(`${API_BASE}/execute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language: "javascript" })
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.logs && data.logs.length > 0) {
-            setOutput((prev) => (prev ? `${prev}\n[Server Log] ${data.logs.join("\n")}` : `[Server Log] ${data.logs.join("\n")}`));
-          }
-        })
-        .catch(() => {});
-    }
-  }, [backendStatus, selectedFile, code]);
+  }, []);
 
   // Export Project
   const handleExportProject = () => {
@@ -323,26 +360,59 @@ function App() {
 
   // Create File
   const handleCreateFile = () => {
-    const fileName = prompt("Enter file name (e.g. Button.jsx, styles.css):");
-    if (!fileName || !fileName.trim()) return;
-    const trimmed = fileName.trim();
+    openInputModal(
+      "📄 Create New File",
+      "e.g. Button.jsx, styles.css, utils.js",
+      "",
+      (fileName) => {
+        if (files.some((f) => f.name.toLowerCase() === fileName.toLowerCase())) {
+          alert("File already exists!");
+          return;
+        }
 
-    if (files.some((f) => f.name.toLowerCase() === trimmed.toLowerCase())) {
-      alert("File already exists!");
-      return;
-    }
+        const newFile = {
+          name: fileName,
+          language: getLanguageFromFileName(fileName),
+          code: ""
+        };
 
-    const newFile = {
-      name: trimmed,
-      language: getLanguageFromFileName(trimmed),
-      code: ""
-    };
+        setFiles((prev) => [...prev, newFile]);
+        setOpenFiles((prev) => [...prev, fileName]);
+        setSelectedFile(fileName);
+        setCode("");
+        setDirtyFiles((prev) => [...prev, fileName]);
+      }
+    );
+  };
 
-    setFiles((prev) => [...prev, newFile]);
-    setOpenFiles((prev) => [...prev, trimmed]);
-    setSelectedFile(trimmed);
-    setCode("");
-    setDirtyFiles((prev) => [...prev, trimmed]);
+  // Create Folder
+  const handleCreateFolder = () => {
+    openInputModal(
+      "📁 Create New Folder",
+      "e.g. components, assets, utils",
+      "",
+      (folderName) => {
+        const trimmedFolder = folderName.replace(/\/+$|^\/+/g, "");
+        const defaultFileName = `${trimmedFolder}/index.js`;
+
+        if (files.some((f) => f.name.toLowerCase() === defaultFileName.toLowerCase())) {
+          alert("Folder already exists!");
+          return;
+        }
+
+        const newFile = {
+          name: defaultFileName,
+          language: "javascript",
+          code: `// ${trimmedFolder} folder entry point\nexport {};\n`
+        };
+
+        setFiles((prev) => [...prev, newFile]);
+        setOpenFiles((prev) => [...prev, defaultFileName]);
+        setSelectedFile(defaultFileName);
+        setCode(newFile.code);
+        setDirtyFiles((prev) => [...prev, defaultFileName]);
+      }
+    );
   };
 
   // Delete File
@@ -352,48 +422,59 @@ function App() {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${fileName}?`)) return;
+    openInputModal(
+      `🗑️ Delete File`,
+      "",
+      "",
+      () => {
+        const updatedFiles = files.filter((f) => f.name !== fileName);
+        const updatedOpenFiles = openFiles.filter((f) => f !== fileName);
 
-    const updatedFiles = files.filter((f) => f.name !== fileName);
-    const updatedOpenFiles = openFiles.filter((f) => f !== fileName);
+        setFiles(updatedFiles);
+        setOpenFiles(updatedOpenFiles);
+        setDirtyFiles((prev) => prev.filter((f) => f !== fileName));
 
-    setFiles(updatedFiles);
-    setOpenFiles(updatedOpenFiles);
-    setDirtyFiles((prev) => prev.filter((f) => f !== fileName));
-
-    if (selectedFile === fileName) {
-      if (updatedOpenFiles.length > 0) {
-        const next = updatedOpenFiles[updatedOpenFiles.length - 1];
-        const nextData = updatedFiles.find((f) => f.name === next);
-        setSelectedFile(next);
-        if (nextData) setCode(nextData.code);
-      } else {
-        setSelectedFile(updatedFiles[0].name);
-        setCode(updatedFiles[0].code);
-      }
-    }
+        if (selectedFile === fileName) {
+          if (updatedOpenFiles.length > 0) {
+            const next = updatedOpenFiles[updatedOpenFiles.length - 1];
+            const nextData = updatedFiles.find((f) => f.name === next);
+            setSelectedFile(next);
+            if (nextData) setCode(nextData.code);
+          } else {
+            setSelectedFile(updatedFiles[0].name);
+            setCode(updatedFiles[0].code);
+          }
+        }
+      },
+      true,
+      `Are you sure you want to permanently delete "${fileName}"? This action cannot be undone.`
+    );
   };
 
   // Rename File
   const handleRenameFile = (oldName) => {
-    const newName = prompt("Enter new file name:", oldName);
-    if (!newName || !newName.trim() || newName.trim() === oldName) return;
-    const trimmed = newName.trim();
+    openInputModal(
+      `✏️ Rename File: ${oldName}`,
+      "Enter new file name",
+      oldName,
+      (newName) => {
+        if (newName === oldName) return;
+        if (files.some((f) => f.name.toLowerCase() === newName.toLowerCase())) {
+          alert("A file with this name already exists!");
+          return;
+        }
 
-    if (files.some((f) => f.name.toLowerCase() === trimmed.toLowerCase())) {
-      alert("A file with this name already exists!");
-      return;
-    }
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.name === oldName ? { ...f, name: newName, language: getLanguageFromFileName(newName) } : f
+          )
+        );
+        setOpenFiles((prev) => prev.map((f) => (f === oldName ? newName : f)));
+        setDirtyFiles((prev) => prev.map((f) => (f === oldName ? newName : f)));
 
-    setFiles((prev) =>
-      prev.map((f) =>
-        f.name === oldName ? { ...f, name: trimmed, language: getLanguageFromFileName(trimmed) } : f
-      )
+        if (selectedFile === oldName) setSelectedFile(newName);
+      }
     );
-    setOpenFiles((prev) => prev.map((f) => (f === oldName ? trimmed : f)));
-    setDirtyFiles((prev) => prev.map((f) => (f === oldName ? trimmed : f)));
-
-    if (selectedFile === oldName) setSelectedFile(trimmed);
   };
 
   // Close Tab
@@ -436,72 +517,102 @@ function App() {
         theme={theme}
         setTheme={setTheme}
         onExportProject={handleExportProject}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       />
 
-      <div className="workspace">
-        {/* ACTIVITY BAR */}
-        <ActivityBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          backendStatus={backendStatus}
-          onToggleTheme={() =>
-            setTheme((prev) => (prev === "vs-dark" ? "vs-light" : prev === "vs-light" ? "hc-black" : "vs-dark"))
-          }
-        />
-
-        {/* EXPLORER OR SEARCH PANEL */}
-        {activeTab === "explorer" && (
-          <Sidebar
-            files={files}
-            selectedFile={selectedFile}
-            onFileSelect={handleFileSelect}
-            onCreateFile={handleCreateFile}
-            onDeleteFile={handleDeleteFile}
-            onRenameFile={handleRenameFile}
-            currentProject={currentProject}
-          />
-        )}
-
-        {activeTab === "search" && (
-          <SearchPanel files={files} onFileSelect={handleFileSelect} />
-        )}
-
-        {activeTab === "debug" && (
-          <aside className="sidebar debug-panel">
-            <h3>RUN & DEBUG</h3>
-            <div className="debug-content">
-              <button className="run-button debug-run" onClick={handleRunCode}>
-                ▶ Start Debugging
-              </button>
-              <p className="debug-info">
-                Preview console and error log capture are actively monitoring execution.
-              </p>
-            </div>
-          </aside>
-        )}
-
-        {/* CODE EDITOR */}
-        <CodeEditor
-          code={code}
-          setCode={handleCodeChange}
-          selectedFile={selectedFile}
+      {viewMode === "dashboard" ? (
+        <Dashboard
+          projects={projects}
           files={files}
-          openFiles={openFiles}
-          onFileSelect={handleFileSelect}
-          onCloseFile={handleCloseFile}
-          dirtyFiles={dirtyFiles}
-          onCursorChange={setCursorPosition}
+          currentProject={currentProject}
+          onSelectProject={handleProjectSelect}
+          onCreateProject={handleCreateProject}
+          onRenameProject={handleRenameProject}
+          onDeleteProject={handleDeleteProject}
+          onViewEditor={() => setViewMode("editor")}
+          backendStatus={backendStatus}
           theme={theme}
-          saveCode={handleSaveCode}
-          runCode={handleRunCode}
+          setTheme={setTheme}
+          runCount={runCode}
         />
+      ) : (
+        <div className="workspace">
+          {/* ACTIVITY BAR */}
+          <ActivityBar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            backendStatus={backendStatus}
+            onToggleTheme={() =>
+              setTheme((prev) => (prev === "vs-dark" ? "vs-light" : prev === "vs-light" ? "hc-black" : "vs-dark"))
+            }
+          />
 
-        {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
-        <div className="right-panel">
-          <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
-          <OutputPanel output={output} clearOutput={clearOutput} />
+          {/* EXPLORER OR SEARCH PANEL */}
+          {activeTab === "explorer" && (
+            <Sidebar
+              files={files}
+              selectedFile={selectedFile}
+              onFileSelect={handleFileSelect}
+              onCreateFile={handleCreateFile}
+              onCreateFolder={handleCreateFolder}
+              onDeleteFile={handleDeleteFile}
+              onRenameFile={handleRenameFile}
+              currentProject={currentProject}
+            />
+          )}
+
+          {activeTab === "search" && (
+            <SearchPanel files={files} onFileSelect={handleFileSelect} />
+          )}
+
+          {activeTab === "debug" && (
+            <aside className="sidebar debug-panel">
+              <h3>RUN & DEBUG</h3>
+              <div className="debug-content">
+                <button className="run-button debug-run" onClick={handleRunCode}>
+                  ▶ Start Debugging
+                </button>
+                <p className="debug-info">
+                  Preview console and error log capture are actively monitoring execution.
+                </p>
+              </div>
+            </aside>
+          )}
+
+          {activeTab === "ai" && (
+            <AiAssistantPanel
+              selectedFile={selectedFile}
+              currentCode={code}
+              onInsertCode={(newCode) => {
+                if (selectedFile) handleCodeChange(newCode);
+              }}
+            />
+          )}
+
+          {/* CODE EDITOR */}
+          <CodeEditor
+            code={code}
+            setCode={handleCodeChange}
+            selectedFile={selectedFile}
+            files={files}
+            openFiles={openFiles}
+            onFileSelect={handleFileSelect}
+            onCloseFile={handleCloseFile}
+            dirtyFiles={dirtyFiles}
+            onCursorChange={setCursorPosition}
+            theme={theme}
+            saveCode={handleSaveCode}
+            runCode={handleRunCode}
+          />
+
+          {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
+          <div className="right-panel">
+            <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
+            <OutputPanel output={output} clearOutput={clearOutput} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* STATUS BAR */}
       <StatusBar
@@ -511,6 +622,9 @@ function App() {
         backendStatus={backendStatus}
         theme={theme}
       />
+
+      {/* INPUT DIALOG MODAL (REPLACES BROWSER PROMPT) */}
+      <InputDialogModal {...inputModal} onClose={closeInputModal} />
     </div>
   );
 }

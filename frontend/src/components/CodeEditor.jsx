@@ -43,6 +43,25 @@ function CodeEditor({
     });
   };
 
+  const getFileBadge = (fileName) => {
+    const ext = fileName.split(".").pop().toLowerCase();
+    switch (ext) {
+      case "html":
+        return <span className="icon-badge html-badge">&lt;&gt;</span>;
+      case "js":
+      case "jsx":
+        return <span className="icon-badge js-badge">JS</span>;
+      case "css":
+        return <span className="icon-badge css-badge">#</span>;
+      case "json":
+        return <span className="icon-badge json-badge">{}</span>;
+      case "md":
+        return <span className="icon-badge md-badge">M↓</span>;
+      default:
+        return <span className="icon-badge default-badge">📄</span>;
+    }
+  };
+
   return (
     <main className="code-editor">
       {/* FILE TABS */}
@@ -58,7 +77,7 @@ function CodeEditor({
               onClick={() => onFileSelect(fileName)}
             >
               <span className="tab-name">
-                📄 {fileName}
+                <span className="file-badge-wrapper">{getFileBadge(fileName)}</span> {fileName}
                 {dirtyFiles.includes(fileName) && (
                   <span className="dirty-dot" title="Unsaved changes">●</span>
                 )}

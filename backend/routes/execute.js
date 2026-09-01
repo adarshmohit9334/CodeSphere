@@ -4,7 +4,7 @@ const router = Router();
 
 // POST /api/execute - Execute JavaScript code snippet securely
 router.post("/", async (req, res) => {
-  const { code, language } = req.body;
+  const { code } = req.body;
 
   if (!code || typeof code !== "string") {
     return res.status(400).json({ error: "Code content is required for execution" });
@@ -19,10 +19,21 @@ router.post("/", async (req, res) => {
     warn: (...args) => logs.push(`[WARN] ` + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ")),
   };
 
+  // If code is a React JSX component file, browser preview handles DOM rendering
+  if (/<[A-Za-z]/.test(code) || code.includes("ReactDOM") || code.includes("createRoot")) {
+    return res.json({
+      success: true,
+      logs: ["React component evaluated in browser preview iframe."],
+      errors: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+
   try {
-    // Basic JS evaluation in isolated context function
-    const cleanCode = code
+    // Strip import and export statements for raw JS execution
+    let cleanCode = code
       .replace(/import\s+[\s\S]*?from\s+["'][^"']+["'];?/g, "")
+      .replace(/import\s+["'][^"']+["'];?/g, "")
       .replace(/export\s+default\s+/g, "")
       .replace(/export\s+/g, "");
 
@@ -40,7 +51,7 @@ router.post("/", async (req, res) => {
     res.json({
       success: false,
       logs: logs,
-      errors: [...errors, err.message],
+      errors: [err.message],
       timestamp: new Date().toISOString()
     });
   }

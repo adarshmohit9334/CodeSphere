@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import projectsRouter from "./routes/projects.js";
 import executeRouter from "./routes/execute.js";
+import aiRouter from "./routes/ai.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,6 +33,7 @@ app.get("/api/health", (req, res) => {
 // Routes
 app.use("/api/projects", projectsRouter);
 app.use("/api/execute", executeRouter);
+app.use("/api/ai", aiRouter);
 
 // 404 Handler
 app.use((req, res) => {

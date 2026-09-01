@@ -35,6 +35,21 @@ function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme }) 
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
         </button>
+
+        {/* AI ASSISTANT ICON */}
+        <button
+          className={`activity-icon ai-activity-icon ${activeTab === "ai" ? "active" : ""}`}
+          onClick={() => setActiveTab("ai")}
+          title="CodeSphere AI Assistant"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12 2a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2V4a2 2 0 0 1 2-2z" />
+            <circle cx="9" cy="11" r="1" fill="currentColor" />
+            <circle cx="15" cy="11" r="1" fill="currentColor" />
+            <path d="M10 14a2 2 0 0 0 4 0" />
+            <path d="M5 11H3M21 11h-2" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
 
       <div className="activity-bottom">

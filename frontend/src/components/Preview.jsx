@@ -1,436 +1,201 @@
 import { useEffect, useRef } from "react";
 
-function Preview({
-  files,
-  onConsoleMessage,
-  runCode,
-}) {
+function Preview({ files, onConsoleMessage, runCode }) {
   const iframeRef = useRef(null);
 
   useEffect(() => {
+    // Only run when user explicitly clicks Run button (runCode > 0)
+    if (!runCode) return;
+
     const iframe = iframeRef.current;
-
-    if (!iframe) {
-      return;
-    }
+    if (!iframe) return;
 
     // ----------------------------------------
-    // GET FILES
+    // FIND FILES
     // ----------------------------------------
-
-    const appFile = files.find(
-      (file) => file.name === "App.jsx"
-    );
-
-    const cssFile = files.find(
-      (file) => file.name === "index.css"
-    );
-
+    const appFile = files.find((file) => file.name === "App.jsx" || file.name === "App.js");
+    const cssFile = files.find((file) => file.name === "index.css" || file.name === "App.css");
     const componentFiles = files.filter(
       (file) =>
-        file.name.endsWith(".jsx") &&
+        (file.name.endsWith(".jsx") || file.name.endsWith(".js")) &&
         file.name !== "App.jsx" &&
-        file.name !== "main.jsx"
+        file.name !== "App.js" &&
+        file.name !== "main.jsx" &&
+        file.name !== "main.js"
     );
 
+    let appCode = appFile ? appFile.code || "" : "";
+    const cssCode = cssFile ? cssFile.code || "" : "";
 
-    // ----------------------------------------
-    // APP CODE
-    // ----------------------------------------
+    // Helper function to clean imports and exports
+    const cleanCode = (codeStr) => {
+      let cleaned = codeStr;
+      // Remove import lines
+      cleaned = cleaned.replace(/import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];?/g, "");
+      cleaned = cleaned.replace(/import\s+['"][^'"]+['"];?/g, "");
+      cleaned = cleaned.replace(/import\s+.*$/gm, "");
 
-    let appCode = appFile
-      ? appFile.code
-      : "";
+      // Replace exports
+      cleaned = cleaned.replace(/export\s+default\s+function\s+/g, "function ");
+      cleaned = cleaned.replace(/export\s+default\s+class\s+/g, "class ");
+      cleaned = cleaned.replace(/export\s+default\s+/g, "");
+      cleaned = cleaned.replace(/export\s+const\s+/g, "const ");
+      cleaned = cleaned.replace(/export\s+function\s+/g, "function ");
+      cleaned = cleaned.replace(/export\s+class\s+/g, "class ");
 
+      return cleaned;
+    };
 
-    // ----------------------------------------
-    // REMOVE IMPORTS
-    // ----------------------------------------
+    const cleanedAppCode = cleanCode(appCode);
 
-    appCode = appCode.replace(
-      /import\s+[\s\S]*?from\s+["'][^"']+["'];?/g,
-      ""
-    );
+    let extraComponentsCode = "";
+    componentFiles.forEach((file) => {
+      extraComponentsCode += `\n${cleanCode(file.code || "")}\n`;
+    });
 
-    appCode = appCode.replace(
-      /import\s+["'][^"']+["'];?/g,
-      ""
-    );
-
-
-    // ----------------------------------------
-    // REMOVE EXPORT DEFAULT
-    // ----------------------------------------
-
-    appCode = appCode.replace(
-      /export\s+default\s+/g,
-      ""
-    );
-
-
-    // ----------------------------------------
-    // COMPONENT CODE
-    // ----------------------------------------
-
-    let extraComponents = "";
-
-    componentFiles.forEach(
-      (file) => {
-
-        let componentCode = file.code || "";
-
-
-        // Remove imports
-
-        componentCode = componentCode.replace(
-          /import\s+[\s\S]*?from\s+["'][^"']+["'];?/g,
-          ""
-        );
-
-        componentCode = componentCode.replace(
-          /import\s+["'][^"']+["'];?/g,
-          ""
-        );
-
-
-        // Remove exports
-
-        componentCode = componentCode.replace(
-          /export\s+default\s+/g,
-          ""
-        );
-
-        componentCode = componentCode.replace(
-          /export\s+/g,
-          ""
-        );
-
-
-        extraComponents += `
-          ${componentCode}
-        `;
-      }
-    );
-
-
-    // ----------------------------------------
-    // CSS
-    // ----------------------------------------
-
-    const cssCode = cssFile
-      ? cssFile.code
-      : "";
-
-
-    // ----------------------------------------
-    // CREATE PREVIEW HTML
-    // ----------------------------------------
-
+    // Construct full HTML document with Babel transform
     const html = `
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
   <meta charset="UTF-8" />
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-
   <style>
-
     ${cssCode}
-
     body {
       margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      box-sizing: border-box;
     }
-
   </style>
-
 </head>
-
-
 <body>
-
   <div id="root"></div>
 
-
-  <!-- React -->
-
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
-
-  <!-- Babel -->
-
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+  <!-- React & ReactDOM CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  
+  <!-- Babel Standalone CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
   <script>
+    // Console interceptor
+    (function() {
+      const origLog = console.log;
+      const origErr = console.error;
+      const origWarn = console.warn;
 
-    // --------------------------------------
-    // CONSOLE CAPTURE
-    // --------------------------------------
-
-    const originalLog = console.log;
-
-    const originalError = console.error;
-
-    const originalWarn = console.warn;
-
-
-    console.log = function(...args) {
-
-      window.parent.postMessage(
-        {
+      console.log = function(...args) {
+        window.parent.postMessage({
           type: "console",
-          message: args
-            .map((item) => String(item))
-            .join(" ")
-        },
-        "*"
-      );
+          message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ")
+        }, "*");
+        origLog.apply(console, args);
+      };
 
-      originalLog.apply(
-        console,
-        args
-      );
-    };
-
-
-    console.error = function(...args) {
-
-      window.parent.postMessage(
-        {
+      console.error = function(...args) {
+        window.parent.postMessage({
           type: "error",
-          message: args
-            .map((item) => String(item))
-            .join(" ")
-        },
-        "*"
-      );
+          message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ")
+        }, "*");
+        origErr.apply(console, args);
+      };
 
-      originalError.apply(
-        console,
-        args
-      );
-    };
-
-
-    console.warn = function(...args) {
-
-      window.parent.postMessage(
-        {
+      console.warn = function(...args) {
+        window.parent.postMessage({
           type: "warn",
-          message: args
-            .map((item) => String(item))
-            .join(" ")
-        },
-        "*"
-      );
+          message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ")
+        }, "*");
+        origWarn.apply(console, args);
+      };
 
-      originalWarn.apply(
-        console,
-        args
-      );
-    };
-
-
-    // --------------------------------------
-    // ERROR HANDLER
-    // --------------------------------------
-
-    window.onerror = function(
-      message,
-      source,
-      line,
-      column,
-      error
-    ) {
-
-      window.parent.postMessage(
-        {
+      window.onerror = function(msg, url, line, col, err) {
+        window.parent.postMessage({
           type: "error",
-          message: String(message)
-        },
-        "*"
-      );
-
-    };
-
-
-    // --------------------------------------
-    // USER COMPONENTS
-    // --------------------------------------
-
-    try {
-
-      ${extraComponents}
-
-
-      // ------------------------------------
-      // APP COMPONENT
-      // ------------------------------------
-
-      ${appCode}
-
-
-      // ------------------------------------
-      // RENDER APP
-      // ------------------------------------
-
-      const root =
-        ReactDOM.createRoot(
-          document.getElementById("root")
-        );
-
-
-      root.render(
-        React.createElement(App)
-      );
-
-
-    } catch (error) {
-
-      window.parent.postMessage(
-        {
-          type: "error",
-          message: error.message
-        },
-        "*"
-      );
-
-    }
-
+          message: String(msg)
+        }, "*");
+      };
+    })();
   </script>
 
-
-  <!-- JSX TRANSFORM -->
-
-  <script type="text/babel">
-
-    // This script intentionally exists
-    // so Babel Standalone is loaded
-    // for JSX support.
-
-  </script>
-
-</body>
-
-</html>
-`;
-
-
-    // ----------------------------------------
-    // WRITE HTML TO IFRAME
-    // ----------------------------------------
-
-    iframe.srcdoc = html;
-
-
-  }, [runCode]);
-
-
-  // ----------------------------------------
-  // LISTEN FOR CONSOLE
-  // ----------------------------------------
-
-  useEffect(() => {
-
-    const handleMessage = (event) => {
-
-      if (
-        !event.data ||
-        !event.data.type
-      ) {
+  <script>
+    function renderApp() {
+      if (typeof Babel === 'undefined' || typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+        setTimeout(renderApp, 40);
         return;
       }
 
+      try {
+        const rawCode = \`
+          ${extraComponentsCode}
 
-      if (
-        event.data.type === "console"
-      ) {
+          ${cleanedAppCode}
 
-        onConsoleMessage(
-          event.data.message
-        );
+          if (typeof App !== 'undefined') {
+            const rootEl = document.getElementById("root");
+            const root = ReactDOM.createRoot(rootEl);
+            root.render(React.createElement(App));
+          } else {
+            console.error("App component is not defined in App.jsx");
+          }
+        \`;
 
+        // Transform JSX to JS via Babel
+        const compiled = Babel.transform(rawCode, {
+          presets: ["react"]
+        }).code;
+
+        // Execute compiled code
+        eval(compiled);
+      } catch (err) {
+        console.error(err.message || err);
       }
+    }
 
+    renderApp();
+  </script>
+</body>
+</html>
+`;
 
-      if (
-        event.data.type === "error"
-      ) {
+    iframe.srcdoc = html;
+  }, [runCode]);
 
-        onConsoleMessage(
-          `❌ ${event.data.message}`
-        );
+  // Listen for console messages from iframe
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (!event.data || !event.data.type) return;
 
+      if (event.data.type === "console") {
+        onConsoleMessage(event.data.message);
+      } else if (event.data.type === "error") {
+        onConsoleMessage(`❌ ${event.data.message}`);
+      } else if (event.data.type === "warn") {
+        onConsoleMessage(`⚠️ ${event.data.message}`);
       }
-
-
-      if (
-        event.data.type === "warn"
-      ) {
-
-        onConsoleMessage(
-          `⚠️ ${event.data.message}`
-        );
-
-      }
-
     };
 
-
-    window.addEventListener(
-      "message",
-      handleMessage
-    );
-
-
-    return () => {
-
-      window.removeEventListener(
-        "message",
-        handleMessage
-      );
-
-    };
-
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, [onConsoleMessage]);
-
-
-  // ----------------------------------------
-  // UI
-  // ----------------------------------------
 
   return (
     <section className="preview-panel">
-
       <div className="preview-header">
         <span>▶</span>
         <span>Preview</span>
       </div>
-
-
       <iframe
         ref={iframeRef}
         title="Code Preview"
         className="preview-frame"
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-same-origin"
       />
-
     </section>
   );
 }
-
 
 export default Preview;
