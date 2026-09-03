@@ -12,7 +12,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  CheckCircle2,
+  KeyRound
 } from "lucide-react";
 
 function SignIn({ onSignIn, onGuestContinue }) {
@@ -24,12 +27,73 @@ function SignIn({ onSignIn, onGuestContinue }) {
   const [loadingProvider, setLoadingProvider] = useState(null); // 'google' | 'github' | 'email' | null
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [activeModal, setActiveModal] = useState(null); // 'google' | 'github' | null
+  const [activeModal, setActiveModal] = useState(null); // 'google' | 'github' | 'otp' | null
   const [customGmail, setCustomGmail] = useState("adarshmohit9334@gmail.com");
   const [customGithub, setCustomGithub] = useState("adarshmohit9334");
 
+  // OTP Verification State
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [inputOtp, setInputOtp] = useState("");
+  const [pendingUser, setPendingUser] = useState(null);
+
   const isValidEmail = (emailStr) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailStr).trim().toLowerCase());
+  };
+
+  const getUserKey = (identifier) => {
+    return String(identifier || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_");
+  };
+
+  const getPreservedUserProfile = (identifier, fallbackObj) => {
+    const key = getUserKey(identifier);
+    const saved = localStorage.getItem(`codesphere_user_${key}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Retain custom edited name and role!
+        return {
+          ...fallbackObj,
+          name: parsed.name || fallbackObj.name,
+          role: parsed.role || fallbackObj.role,
+          avatar: parsed.avatar || fallbackObj.avatar
+        };
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return fallbackObj;
+  };
+
+  const initiateOtpVerification = (userCandidate) => {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(otp);
+    setInputOtp("");
+    setPendingUser(userCandidate);
+    setLoadingProvider(null);
+    setActiveModal("otp");
+  };
+
+  const handleVerifyOtp = (e) => {
+    if (e) e.preventDefault();
+    if (!inputOtp.trim() || inputOtp.trim() !== generatedOtp) {
+      const msg = "Invalid OTP Code! Please enter the correct 6-digit verification code.";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
+    if (pendingUser) {
+      const key = getUserKey(pendingUser.username || pendingUser.email);
+      localStorage.setItem("codesphere_user", JSON.stringify(pendingUser));
+      localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(pendingUser));
+      localStorage.setItem("codesphere_auth_token", `verified-jwt-${key}-${Date.now()}`);
+
+      const alertMsg = `🔐 Security Alert: Successful login to CodeSphere for ${pendingUser.email || pendingUser.username} at ${new Date().toLocaleTimeString()}`;
+      alert(`${alertMsg}\n\nOTP Verified! Welcome back, ${pendingUser.name}!`);
+
+      setActiveModal(null);
+      onSignIn(pendingUser);
+    }
   };
 
   // Handle Google OAuth Sign In
@@ -52,24 +116,23 @@ function SignIn({ onSignIn, onGuestContinue }) {
 
     setLoadingProvider("google");
     setErrorMessage("");
-    setActiveModal(null);
 
     setTimeout(() => {
-      const nameVal = emailVal.split("@")[0] || "Adarsh Kumar";
-      const googleUser = {
-        name: nameVal,
+      const defaultName = emailVal === "adarshmohit9334@gmail.com" ? "Adarsh Kumar" : (emailVal.split("@")[0] || "Adarsh Kumar");
+      const fallbackGoogleUser = {
+        name: defaultName,
         email: emailVal,
         role: "Full-Stack Developer",
         plan: "Pro Developer ⚡",
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameVal)}`,
+        avatar: emailVal === "adarshmohit9334@gmail.com"
+          ? "https://github.com/adarshmohit9334.png"
+          : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(defaultName)}`,
         provider: "Google",
         joinedDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
       };
 
-      localStorage.setItem("codesphere_user", JSON.stringify(googleUser));
-      localStorage.setItem("codesphere_auth_token", "real-google-jwt-token-adarshmohit9334");
-      setLoadingProvider(null);
-      onSignIn(googleUser);
+      const finalUser = getPreservedUserProfile(emailVal, fallbackGoogleUser);
+      initiateOtpVerification(finalUser);
     }, 1000);
   };
 
@@ -86,12 +149,11 @@ function SignIn({ onSignIn, onGuestContinue }) {
 
     setLoadingProvider("github");
     setErrorMessage("");
-    setActiveModal(null);
 
     setTimeout(() => {
-      const githubUser = {
-        name: username,
-        email: `${username}@users.noreply.github.com`,
+      const fallbackGitHubUser = {
+        name: username === "adarshmohit9334" ? "Adarsh Kumar" : username,
+        email: username === "adarshmohit9334" ? "adarshmohit9334@gmail.com" : `${username}@users.noreply.github.com`,
         username: username,
         role: `GitHub Developer (@${username})`,
         plan: "Pro Developer ⚡",
@@ -100,10 +162,8 @@ function SignIn({ onSignIn, onGuestContinue }) {
         joinedDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
       };
 
-      localStorage.setItem("codesphere_user", JSON.stringify(githubUser));
-      localStorage.setItem("codesphere_auth_token", "real-github-oauth-token-adarshmohit9334");
-      setLoadingProvider(null);
-      onSignIn(githubUser);
+      const finalUser = getPreservedUserProfile(username, fallbackGitHubUser);
+      initiateOtpVerification(finalUser);
     }, 1000);
   };
 
@@ -154,7 +214,7 @@ function SignIn({ onSignIn, onGuestContinue }) {
     setLoadingProvider("email");
 
     setTimeout(() => {
-      const userObj = {
+      const fallbackUserObj = {
         name: isSignUp ? name.trim() : (cleanEmail.split("@")[0] || "Adarsh Kumar"),
         email: cleanEmail,
         role: "Full-Stack Developer",
@@ -163,10 +223,8 @@ function SignIn({ onSignIn, onGuestContinue }) {
         joinedDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
       };
 
-      localStorage.setItem("codesphere_user", JSON.stringify(userObj));
-      localStorage.setItem("codesphere_auth_token", "mock-email-auth-token-112233");
-      setLoadingProvider(null);
-      onSignIn(userObj);
+      const finalUser = getPreservedUserProfile(cleanEmail, fallbackUserObj);
+      initiateOtpVerification(finalUser);
     }, 1000);
   };
 
@@ -525,9 +583,84 @@ function SignIn({ onSignIn, onGuestContinue }) {
               <div className="modal-footer-btns">
                 <button className="btn-modal-cancel" onClick={() => setActiveModal(null)}>Cancel</button>
                 <button className="btn-modal-submit" onClick={() => executeGitHubSignIn(customGithub)}>
-                  Authorize &amp; Continue
+                  Authorize &amp; Send OTP
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP SECURITY VERIFICATION MODAL */}
+      {activeModal === "otp" && (
+        <div className="modal-backdrop" onClick={() => {}}>
+          <div className="modal-content input-modal-card otp-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <KeyRound size={22} style={{ color: "#38bdf8" }} />
+                <h3>Verify 6-Digit Security OTP</h3>
+              </div>
+              <button className="close-modal" onClick={() => setActiveModal(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              {/* DEMO OTP NOTIFICATION BANNER */}
+              <div style={{
+                background: "rgba(56, 189, 248, 0.15)",
+                border: "1px solid rgba(56, 189, 248, 0.35)",
+                padding: "12px",
+                borderRadius: "10px",
+                marginBottom: "16px",
+                fontSize: "12.5px",
+                color: "#e0f2fe",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "bold", color: "#38bdf8" }}>
+                  <ShieldCheck size={16} />
+                  <span>Security OTP Sent to Email</span>
+                </div>
+                <span>OTP code sent to <strong>{pendingUser?.email}</strong>:</span>
+                <span style={{ fontSize: "22px", fontWeight: "900", letterSpacing: "4px", color: "#38bdf8", marginTop: "4px" }}>
+                  {generatedOtp}
+                </span>
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  (Please enter the code above to verify login)
+                </span>
+              </div>
+
+              <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div className="input-group">
+                  <label>Enter 6-Digit OTP Code</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    className="custom-modal-input"
+                    value={inputOtp}
+                    onChange={(e) => setInputOtp(e.target.value)}
+                    placeholder="e.g. 849201"
+                    autoFocus
+                    required
+                    style={{ fontSize: "18px", letterSpacing: "6px", textAlign: "center", fontWeight: "bold" }}
+                  />
+                </div>
+
+                {errorMessage && (
+                  <div className="error-banner">
+                    <AlertCircle size={15} />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                <div className="modal-footer-btns">
+                  <button type="button" className="btn-modal-cancel" onClick={() => setActiveModal(null)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-modal-submit">
+                    Verify &amp; Sign In
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

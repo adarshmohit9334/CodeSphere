@@ -122,7 +122,9 @@ function App() {
 
   const handleUpdateUser = (updatedUser) => {
     setUser(updatedUser);
+    const key = String(updatedUser.username || updatedUser.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_");
     localStorage.setItem("codesphere_user", JSON.stringify(updatedUser));
+    localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(updatedUser));
   };
 
   // Save theme preference to LocalStorage
