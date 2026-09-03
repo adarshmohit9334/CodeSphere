@@ -13,7 +13,9 @@ function CodeEditor({
   onCursorChange,
   theme,
   saveCode,
-  runCode
+  runCode,
+  fontSize = 14,
+  tabSize = 2
 }) {
   const editorRef = useRef(null);
 
@@ -108,14 +110,14 @@ function CodeEditor({
           onChange={(value) => setCode(value || "")}
           onMount={handleEditorDidMount}
           options={{
-            fontSize: 14,
+            fontSize: Number(fontSize || 14),
             fontFamily: "Fira Code, Consolas, Monaco, 'Courier New', monospace",
             minimap: { enabled: true },
             automaticLayout: true,
             padding: { top: 12 },
             scrollBeyondLastLine: false,
             wordWrap: "on",
-            tabSize: 2,
+            tabSize: Number(tabSize || 2),
             smoothScrolling: true,
             cursorBlinking: "smooth",
             cursorSmoothCaretAnimation: "on"

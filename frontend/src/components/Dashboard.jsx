@@ -42,7 +42,10 @@ function Dashboard({
   setTheme = () => {},
   runCount = 12,
   user = null,
-  onSignOut = null
+  onSignOut = null,
+  editorSettings = { fontSize: 14, tabSize: 2, autoSave: true, minimap: true },
+  onUpdateEditorSettings = () => {},
+  onUpdateUser = () => {}
 }) {
   const safeProjects = Array.isArray(projects) ? projects : [];
   const safeFiles = Array.isArray(files) ? files : [];
@@ -208,12 +211,30 @@ function Dashboard({
     joinedDate: "August 2026"
   };
 
-  const [editorSettings, setEditorSettings] = useState({
-    fontSize: 14,
-    tabSize: 2,
-    autoSave: true,
-    minimap: true
-  });
+  const [editName, setEditName] = useState(userProfile.name);
+  const [editRole, setEditRole] = useState(userProfile.role || "Full-Stack Developer");
+
+  useEffect(() => {
+    setEditName(userProfile.name);
+    setEditRole(userProfile.role || "Full-Stack Developer");
+  }, [userProfile]);
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      alert("Profile name cannot be empty!");
+      return;
+    }
+    const updated = {
+      ...userProfile,
+      name: editName.trim(),
+      role: editRole.trim() || "Developer"
+    };
+    if (onUpdateUser) {
+      onUpdateUser(updated);
+    }
+    alert("Profile details updated successfully!");
+  };
 
   const runHistory = [
     { id: 1, file: "App.jsx", status: "Success", timestamp: "2 mins ago", output: "Hello from CodeSphere!" },
@@ -666,88 +687,191 @@ function Dashboard({
         </div>
       </div>
 
-      {/* SETTINGS MODAL */}
+      {/* SETTINGS & PROFILE MODAL */}
       {showSettingsModal && (
         <div className="modal-backdrop" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content settings-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title-group">
                 <Settings size={18} />
-                <h3>Editor Settings &amp; Preferences</h3>
+                <h3>Account &amp; Editor Preferences</h3>
               </div>
               <button className="close-modal" onClick={() => setShowSettingsModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="setting-item">
-                <label>Theme Selection</label>
-                <div className="theme-options-grid">
-                  <button
-                    className={`theme-option-btn ${theme === "vs-dark" ? "selected" : ""}`}
-                    onClick={() => setTheme("vs-dark")}
-                  >
-                    VS Dark
+            <div className="modal-body settings-modal-body">
+              {/* SECTION 1: PROFILE MANAGEMENT */}
+              <div className="settings-section">
+                <h4 className="settings-section-title">👤 User Profile Settings</h4>
+                <form onSubmit={handleSaveProfile} className="profile-edit-form">
+                  <div className="setting-input-group">
+                    <label>Full Display Name</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="e.g. Adarsh Kumar"
+                      required
+                    />
+                  </div>
+
+                  <div className="setting-input-group">
+                    <label>Developer Title / Role</label>
+                    <input
+                      type="text"
+                      className="settings-text-input"
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      placeholder="e.g. Full-Stack Developer"
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-save-profile">
+                    Save Profile Changes
                   </button>
-                  <button
-                    className={`theme-option-btn ${theme === "vs-light" ? "selected" : ""}`}
-                    onClick={() => setTheme("vs-light")}
+                </form>
+              </div>
+
+              {/* SECTION 2: EDITOR FONT SIZE INCREMENT/DECREMENT */}
+              <div className="settings-section">
+                <h4 className="settings-section-title">🔤 Code Editor Font Size</h4>
+
+                <div className="font-size-control-row">
+                  <span className="font-control-label">Font Size</span>
+                  <div className="font-stepper-wrapper">
+                    <button
+                      type="button"
+                      className="btn-font-stepper"
+                      onClick={() =>
+                        onUpdateEditorSettings({
+                          ...editorSettings,
+                          fontSize: Math.max(10, editorSettings.fontSize - 1)
+                        })
+                      }
+                      title="Decrease Font Size"
+                    >
+                      −
+                    </button>
+                    <span className="font-size-badge">{editorSettings.fontSize}px</span>
+                    <button
+                      type="button"
+                      className="btn-font-stepper"
+                      onClick={() =>
+                        onUpdateEditorSettings({
+                          ...editorSettings,
+                          fontSize: Math.min(28, editorSettings.fontSize + 1)
+                        })
+                      }
+                      title="Increase Font Size"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="setting-item" style={{ marginTop: 8 }}>
+                  <input
+                    type="range"
+                    min="10"
+                    max="28"
+                    className="font-size-slider"
+                    value={editorSettings.fontSize}
+                    onChange={(e) =>
+                      onUpdateEditorSettings({
+                        ...editorSettings,
+                        fontSize: Number(e.target.value)
+                      })
+                    }
+                  />
+                </div>
+
+                {/* LIVE CODE FONT PREVIEW */}
+                <div className="font-preview-box">
+                  <span className="preview-label">Live Code Preview:</span>
+                  <div
+                    className="preview-code-text"
+                    style={{ fontSize: `${editorSettings.fontSize}px` }}
                   >
-                    VS Light
-                  </button>
-                  <button
-                    className={`theme-option-btn ${theme === "hc-black" ? "selected" : ""}`}
-                    onClick={() => setTheme("hc-black")}
-                  >
-                    High Contrast
-                  </button>
+                    <code>function CodeSphere() &#123; return "Hello World"; &#125;</code>
+                  </div>
                 </div>
               </div>
 
-              <div className="setting-item">
-                <label>Font Size ({editorSettings.fontSize}px)</label>
-                <input
-                  type="range"
-                  min="12"
-                  max="24"
-                  value={editorSettings.fontSize}
-                  onChange={(e) =>
-                    setEditorSettings({ ...editorSettings, fontSize: Number(e.target.value) })
-                  }
-                />
-              </div>
+              {/* SECTION 3: THEME & EDITOR PREFERENCES */}
+              <div className="settings-section">
+                <h4 className="settings-section-title">🎨 Theme &amp; Formatting</h4>
 
-              <div className="setting-item">
-                <label>Tab Size</label>
-                <select
-                  className="setting-select"
-                  value={editorSettings.tabSize}
-                  onChange={(e) =>
-                    setEditorSettings({ ...editorSettings, tabSize: Number(e.target.value) })
-                  }
-                >
-                  <option value={2}>2 Spaces</option>
-                  <option value={4}>4 Spaces</option>
-                </select>
-              </div>
+                <div className="setting-item">
+                  <label>Editor Theme</label>
+                  <div className="theme-options-grid">
+                    <button
+                      type="button"
+                      className={`theme-option-btn ${theme === "vs-dark" ? "selected" : ""}`}
+                      onClick={() => setTheme("vs-dark")}
+                    >
+                      VS Dark
+                    </button>
+                    <button
+                      type="button"
+                      className={`theme-option-btn ${theme === "vs-light" ? "selected" : ""}`}
+                      onClick={() => setTheme("vs-light")}
+                    >
+                      VS Light
+                    </button>
+                    <button
+                      type="button"
+                      className={`theme-option-btn ${theme === "hc-black" ? "selected" : ""}`}
+                      onClick={() => setTheme("hc-black")}
+                    >
+                      High Contrast
+                    </button>
+                  </div>
+                </div>
 
-              <div className="setting-item checkbox-setting">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={editorSettings.autoSave}
+                <div className="setting-item">
+                  <label>Tab Indentation Size</label>
+                  <select
+                    className="setting-select"
+                    value={editorSettings.tabSize}
                     onChange={(e) =>
-                      setEditorSettings({ ...editorSettings, autoSave: e.target.checked })
+                      onUpdateEditorSettings({
+                        ...editorSettings,
+                        tabSize: Number(e.target.value)
+                      })
                     }
-                  />
-                  <span>Enable Auto-Save to LocalStorage</span>
-                </label>
+                  >
+                    <option value={2}>2 Spaces (Default)</option>
+                    <option value={4}>4 Spaces</option>
+                  </select>
+                </div>
+
+                <div className="setting-item checkbox-setting">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={editorSettings.autoSave}
+                      onChange={(e) =>
+                        onUpdateEditorSettings({
+                          ...editorSettings,
+                          autoSave: e.target.checked
+                        })
+                      }
+                    />
+                    <span>Auto-Save Code Changes to Storage</span>
+                  </label>
+                </div>
               </div>
 
               <div className="modal-footer">
-                <button className="btn-primary" onClick={() => setShowSettingsModal(false)}>
-                  Save Preferences
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setShowSettingsModal(false)}
+                >
+                  Done
                 </button>
               </div>
             </div>

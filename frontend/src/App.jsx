@@ -103,6 +103,28 @@ function App() {
     setViewMode("signin");
   };
 
+  const [editorSettings, setEditorSettings] = useState(() => {
+    const saved = localStorage.getItem("codesphere_editor_settings");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return { fontSize: 14, tabSize: 2, autoSave: true, minimap: true };
+  });
+
+  const handleUpdateEditorSettings = (newSettings) => {
+    setEditorSettings(newSettings);
+    localStorage.setItem("codesphere_editor_settings", JSON.stringify(newSettings));
+  };
+
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("codesphere_user", JSON.stringify(updatedUser));
+  };
+
   // Save theme preference to LocalStorage
   useEffect(() => {
     localStorage.setItem("code-editor-theme", theme);
@@ -626,6 +648,9 @@ function App() {
             runCount={runCode}
             user={user}
             onSignOut={handleSignOut}
+            editorSettings={editorSettings}
+            onUpdateEditorSettings={handleUpdateEditorSettings}
+            onUpdateUser={handleUpdateUser}
           />
         </ErrorBoundary>
       ) : (
@@ -696,6 +721,8 @@ function App() {
             theme={theme}
             saveCode={handleSaveCode}
             runCode={handleRunCode}
+            fontSize={editorSettings.fontSize}
+            tabSize={editorSettings.tabSize}
           />
 
           {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
