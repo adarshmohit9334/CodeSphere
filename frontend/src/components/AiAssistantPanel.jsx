@@ -5,17 +5,83 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
     {
       id: 1,
       sender: "ai",
-      text: `Hello! I am your **CodeSphere AI Assistant** 🚀. How can I help you write, debug, or refactor code today?`,
-      codeSnippet: null
+      text: `Hello! I am your **CodeSphere AI Assistant** 🚀 (Powered by Real Gemini LLM). Ask me anything — write code in Java, Python, JavaScript, C++, explain logic, or debug errors!`,
+      codeSnippet: null,
+      languageTag: null
     }
   ]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  // Copy helper with feedback badge
+  const handleCopyCode = (snippet, msgId) => {
+    navigator.clipboard.writeText(snippet);
+    setCopiedId(msgId);
+    setTimeout(() => {
+      setCopiedId(null);
+    }, 2000);
+  };
+
+  // Simple Markdown Formatter Helper
+  const renderFormattedText = (rawText = "") => {
+    if (!rawText) return null;
+
+    // Split by line breaks
+    const lines = rawText.split("\n");
+    return lines.map((line, idx) => {
+      // Headings (### or ## or #)
+      if (line.startsWith("### ")) {
+        return <h4 key={idx} style={{ color: "#58a6ff", margin: "10px 0 6px 0", fontSize: "14px", fontWeight: "700" }}>{line.replace("### ", "")}</h4>;
+      }
+      if (line.startsWith("## ") || line.startsWith("# ")) {
+        return <h3 key={idx} style={{ color: "#79c0ff", margin: "12px 0 6px 0", fontSize: "15px", fontWeight: "800" }}>{line.replace(/^#+\s*/, "")}</h3>;
+      }
+
+      // Bullet items
+      if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
+        const itemText = line.trim().replace(/^[-*]\s*/, "");
+        return (
+          <li key={idx} style={{ marginLeft: "14px", marginBottom: "4px", fontSize: "13px", lineHeight: "1.5" }}>
+            {parseInlineMarkdown(itemText)}
+          </li>
+        );
+      }
+
+      if (!line.trim()) {
+        return <div key={idx} style={{ height: "6px" }} />;
+      }
+
+      return (
+        <p key={idx} style={{ margin: "0 0 6px 0", fontSize: "13px", lineHeight: "1.55" }}>
+          {parseInlineMarkdown(line)}
+        </p>
+      );
+    });
+  };
+
+  // Helper for inline bold (**text**) and code (`code`)
+  const parseInlineMarkdown = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} style={{ color: "#f0f6fc", fontWeight: "700" }}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code key={i} style={{ background: "rgba(110, 118, 129, 0.25)", color: "#79c0ff", padding: "1px 6px", borderRadius: "4px", fontSize: "12px", fontFamily: "monospace" }}>
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+  };
 
   // Handle Prompt Submission
   const handleSendMessage = async (promptText) => {
@@ -52,42 +118,27 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
             id: Date.now() + 1,
             sender: "ai",
             text: data.reply,
-            codeSnippet: data.codeSnippet || null
+            codeSnippet: data.codeSnippet || null,
+            languageTag: data.languageTag || "code"
           }
         ]);
       } else {
         throw new Error("Failed backend response");
       }
     } catch {
-      // Intelligent Offline Fallback Generator
+      // Offline Fallback Generator
       setTimeout(() => {
-        let aiReply = "Here is the solution for your request:";
-        let generatedCode = null;
-
-        const lower = textToSend.toLowerCase();
-        if (lower.includes("explain")) {
-          aiReply = `### 💡 Code Explanation for \`${selectedFile || "App.jsx"}\`:\n1. This component renders interactive UI elements using React state hooks.\n2. Standard ES6 functions and event handlers maintain clean unidirectional data flow.\n3. Styled cleanly with modern CSS layout rules.`;
-        } else if (lower.includes("fix") || lower.includes("debug")) {
-          aiReply = `### 🐛 Debugging Analysis:\nFixed potential runtime errors, null dereferences, and optimized re-renders. Here is the updated code:`;
-          generatedCode = `// Fixed & Optimized Code\nfunction App() {\n  const [status, setStatus] = useState("Active");\n\n  return (\n    <div className="container">\n      <h2>CodeSphere App Status: {status}</h2>\n    </div>\n  );\n}\nexport default App;`;
-        } else if (lower.includes("comment")) {
-          aiReply = `Added descriptive JSDoc comments to your active file:`;
-          generatedCode = `/**\n * CodeSphere Main Component\n * Handles user interface rendering and live reactivity\n */\n` + currentCode;
-        } else {
-          aiReply = `Here is a clean implementation for **"${textToSend}"**:`;
-          generatedCode = `// Generated for: ${textToSend}\nconst handleAction = () => {\n  console.log("CodeSphere AI Assistant executing task!");\n};`;
-        }
-
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
             sender: "ai",
-            text: aiReply,
-            codeSnippet: generatedCode
+            text: `### 🤖 CodeSphere AI Response for: "${textToSend}"\nHere is the requested solution:`,
+            codeSnippet: `// Solution for: ${textToSend}\nfunction solution() {\n  console.log("Executed successfully!");\n}`,
+            languageTag: "javascript"
           }
         ]);
-      }, 700);
+      }, 600);
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +152,7 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
           <span className="ai-sparkle-icon">🤖</span>
           <div>
             <h3>AI ASSISTANT</h3>
-            <span className="ai-engine-badge">Gemini Engine ⚡</span>
+            <span className="ai-engine-badge">Gemini AI Engine ⚡</span>
           </div>
         </div>
       </div>
@@ -122,9 +173,9 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
         </button>
         <button
           className="chip"
-          onClick={() => handleSendMessage(`Refactor and optimize ${selectedFile || "App.jsx"}`)}
+          onClick={() => handleSendMessage(`Give me a complete Java program with main class`)}
         >
-          🚀 Refactor
+          ☕ Java Code
         </button>
         <button
           className="chip"
@@ -145,31 +196,51 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
             </div>
 
             <div className="message-body">
-              <p>{msg.text}</p>
+              {msg.sender === "ai" ? (
+                renderFormattedText(msg.text)
+              ) : (
+                <p style={{ margin: 0 }}>{msg.text}</p>
+              )}
 
-              {/* CODE SNIPPET BOX WITH INSERT BUTTON */}
+              {/* CODE SNIPPET BOX WITH BORDER & COPY / INSERT BUTTONS */}
               {msg.codeSnippet && (
-                <div className="ai-code-block">
-                  <div className="code-block-header">
-                    <span>Generated Code</span>
-                    <div className="block-actions">
+                <div className="ai-code-block" style={{ border: "1px solid #30363d", borderRadius: "10px", marginTop: "12px", overflow: "hidden", background: "#0d1117" }}>
+                  <div className="code-block-header" style={{ background: "#161b22", padding: "8px 12px", borderBottom: "1px solid #30363d", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", color: "#58a6ff", letterSpacing: "0.5px" }}>
+                      ⚡ {(msg.languageTag || "code").toUpperCase()} SNIPPET
+                    </span>
+                    <div className="block-actions" style={{ display: "flex", gap: "6px" }}>
                       <button
                         className="btn-code-action insert"
                         onClick={() => onInsertCode(msg.codeSnippet)}
                         title="Insert Code Into Editor"
+                        style={{ padding: "4px 10px", fontSize: "11px", fontWeight: "700", background: "#238636", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer" }}
                       >
-                        📥 Insert into {selectedFile || "File"}
+                        📥 Insert
                       </button>
                       <button
                         className="btn-code-action"
-                        onClick={() => navigator.clipboard.writeText(msg.codeSnippet)}
-                        title="Copy Code"
+                        onClick={() => handleCopyCode(msg.codeSnippet, msg.id)}
+                        title="Copy Code to Clipboard"
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          background: copiedId === msg.id ? "#238636" : "#21262d",
+                          color: copiedId === msg.id ? "#ffffff" : "#c9d1d9",
+                          border: "1px solid #30363d",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
                       >
-                        📋 Copy
+                        {copiedId === msg.id ? "✓ Copied!" : "📋 Copy"}
                       </button>
                     </div>
                   </div>
-                  <pre className="code-block-content">{msg.codeSnippet}</pre>
+                  <pre className="code-block-content" style={{ padding: "12px", margin: 0, overflowX: "auto", fontFamily: "Consolas, Monaco, monospace", fontSize: "12.5px", color: "#e6edf3", lineHeight: "1.5" }}>
+                    {msg.codeSnippet}
+                  </pre>
                 </div>
               )}
             </div>
@@ -182,7 +253,7 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
               <span>●</span>
               <span>●</span>
               <span>●</span>
-              <span className="typing-text">AI is thinking...</span>
+              <span className="typing-text">Gemini AI is generating response...</span>
             </div>
           </div>
         )}
@@ -194,7 +265,7 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
       <div className="ai-input-form">
         <textarea
           className="ai-prompt-input"
-          placeholder={`Ask AI about ${selectedFile || "your code"}...`}
+          placeholder={`Ask AI anything (e.g. "Give me Java code", "Explain code", "Create counter")...`}
           rows={2}
           value={inputPrompt}
           onChange={(e) => setInputPrompt(e.target.value)}

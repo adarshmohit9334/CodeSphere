@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, Component } from "react";
+import { supabase } from "./supabaseClient";
 
 import Navbar from "./components/Navbar";
 import ActivityBar from "./components/ActivityBar";
@@ -91,12 +92,56 @@ function App() {
     return localStorage.getItem("code-editor-theme") || "vs-dark";
   });
 
+  const mapSupabaseUser = (sbUser) => {
+    const meta = sbUser.user_metadata || {};
+    const userObj = {
+      id: sbUser.id,
+      name: meta.full_name || meta.name || sbUser.email?.split("@")[0] || "Adarsh Kumar",
+      email: sbUser.email || "",
+      username: meta.user_name || meta.preferred_username || sbUser.email?.split("@")[0] || "",
+      avatar: meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(meta.full_name || sbUser.email || "User")}`,
+      provider: sbUser.app_metadata?.provider || "Supabase",
+      role: meta.role || "Full-Stack Developer",
+      plan: "Pro Developer ⚡",
+      joinedDate: new Date(sbUser.created_at || Date.now()).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    };
+
+    const key = (userObj.username || userObj.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    localStorage.setItem("codesphere_user", JSON.stringify(userObj));
+    localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(userObj));
+
+    setUser(userObj);
+    setViewMode("dashboard");
+  };
+
+  // Real Supabase Session Listener (Google SSO Redirect & Auth Persistence)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        mapSupabaseUser(session.user);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        mapSupabaseUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleSignIn = (userObj) => {
     setUser(userObj);
     setViewMode("dashboard");
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error(e);
+    }
     localStorage.removeItem("codesphere_user");
     localStorage.removeItem("codesphere_auth_token");
     setUser(null);
