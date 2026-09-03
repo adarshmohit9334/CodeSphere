@@ -108,32 +108,36 @@ function App() {
     localStorage.setItem("code-editor-theme", theme);
   }, [theme]);
 
+  const userKey = user
+    ? (user.username || user.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_")
+    : "guest";
+
   const [backendStatus, setBackendStatus] = useState(false);
 
   const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem("code-editor-projects");
+    const saved = localStorage.getItem(`codesphere_${userKey}_projects`);
     return saved ? JSON.parse(saved) : defaultProjects;
   });
 
   const [currentProject, setCurrentProject] = useState(() => {
-    return localStorage.getItem("code-editor-current-project") || "My React Project";
+    return localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
   });
 
   const [files, setFiles] = useState(() => {
-    const savedProject = localStorage.getItem("code-editor-current-project") || "My React Project";
-    const savedFiles = localStorage.getItem(`code-editor-files-${savedProject}`);
+    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
+    const savedFiles = localStorage.getItem(`codesphere_${userKey}_files_${savedProject}`);
     return savedFiles ? JSON.parse(savedFiles) : defaultFiles;
   });
 
   const [openFiles, setOpenFiles] = useState(() => {
-    const savedProject = localStorage.getItem("code-editor-current-project") || "My React Project";
-    const savedOpenFiles = localStorage.getItem(`code-editor-open-files-${savedProject}`);
+    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
+    const savedOpenFiles = localStorage.getItem(`codesphere_${userKey}_open_files_${savedProject}`);
     return savedOpenFiles ? JSON.parse(savedOpenFiles) : ["App.jsx"];
   });
 
   const [selectedFile, setSelectedFile] = useState(() => {
-    const savedProject = localStorage.getItem("code-editor-current-project") || "My React Project";
-    const savedSelected = localStorage.getItem(`code-editor-selected-file-${savedProject}`);
+    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
+    const savedSelected = localStorage.getItem(`codesphere_${userKey}_selected_file_${savedProject}`);
     return savedSelected || "App.jsx";
   });
 
@@ -141,6 +145,30 @@ function App() {
     const selected = files.find((f) => f.name === selectedFile);
     return selected ? selected.code : defaultFiles[0].code;
   });
+
+  // Re-sync workspace when active user account changes!
+  useEffect(() => {
+    if (!userKey) return;
+    const savedProjStr = localStorage.getItem(`codesphere_${userKey}_projects`);
+    const userProjects = savedProjStr ? JSON.parse(savedProjStr) : [`${user?.name || "My"} React Workspace`, "Untitled Project"];
+    setProjects(userProjects);
+
+    const savedCurProj = localStorage.getItem(`codesphere_${userKey}_current_project`) || userProjects[0];
+    setCurrentProject(savedCurProj);
+
+    const savedFilesStr = localStorage.getItem(`codesphere_${userKey}_files_${savedCurProj}`);
+    const userFiles = savedFilesStr ? JSON.parse(savedFilesStr) : defaultFiles;
+    setFiles(userFiles);
+
+    const savedOpenStr = localStorage.getItem(`codesphere_${userKey}_open_files_${savedCurProj}`);
+    setOpenFiles(savedOpenStr ? JSON.parse(savedOpenStr) : ["App.jsx"]);
+
+    const savedSelected = localStorage.getItem(`codesphere_${userKey}_selected_file_${savedCurProj}`) || "App.jsx";
+    setSelectedFile(savedSelected);
+
+    const activeObj = userFiles.find((f) => f.name === savedSelected);
+    setCode(activeObj ? activeObj.code : (userFiles[0]?.code || defaultFiles[0].code));
+  }, [userKey]);
 
   const [output, setOutput] = useState("");
   const [runCode, setRunCode] = useState(0);
@@ -156,15 +184,6 @@ function App() {
         const res = await fetch(`${API_BASE}/health`);
         if (res.ok) {
           setBackendStatus(true);
-          // Sync projects list from backend
-          const projectsRes = await fetch(`${API_BASE}/projects`);
-          if (projectsRes.ok) {
-            const remoteProjects = await projectsRes.json();
-            if (remoteProjects && remoteProjects.length > 0) {
-              const names = remoteProjects.map((p) => p.name);
-              setProjects((prev) => Array.from(new Set([...prev, ...names])));
-            }
-          }
         } else {
           setBackendStatus(false);
         }
@@ -175,38 +194,38 @@ function App() {
     checkBackend();
   }, []);
 
-  // Sync to LocalStorage
+  // Sync to LocalStorage per-account
   useEffect(() => {
-    localStorage.setItem("code-editor-projects", JSON.stringify(projects));
-  }, [projects]);
+    localStorage.setItem(`codesphere_${userKey}_projects`, JSON.stringify(projects));
+  }, [projects, userKey]);
 
   useEffect(() => {
-    localStorage.setItem("code-editor-current-project", currentProject);
-  }, [currentProject]);
+    localStorage.setItem(`codesphere_${userKey}_current_project`, currentProject);
+  }, [currentProject, userKey]);
 
   useEffect(() => {
-    localStorage.setItem(`code-editor-files-${currentProject}`, JSON.stringify(files));
-  }, [files, currentProject]);
+    localStorage.setItem(`codesphere_${userKey}_files_${currentProject}`, JSON.stringify(files));
+  }, [files, currentProject, userKey]);
 
   useEffect(() => {
-    localStorage.setItem(`code-editor-open-files-${currentProject}`, JSON.stringify(openFiles));
-  }, [openFiles, currentProject]);
+    localStorage.setItem(`codesphere_${userKey}_open_files_${currentProject}`, JSON.stringify(openFiles));
+  }, [openFiles, currentProject, userKey]);
 
   useEffect(() => {
     if (selectedFile) {
-      localStorage.setItem(`code-editor-selected-file-${currentProject}`, selectedFile);
+      localStorage.setItem(`codesphere_${userKey}_selected_file_${currentProject}`, selectedFile);
     }
-  }, [selectedFile, currentProject]);
+  }, [selectedFile, currentProject, userKey]);
 
   // Project Selection
   const handleProjectSelect = (project) => {
-    localStorage.setItem(`code-editor-files-${currentProject}`, JSON.stringify(files));
-    localStorage.setItem(`code-editor-open-files-${currentProject}`, JSON.stringify(openFiles));
-    localStorage.setItem(`code-editor-selected-file-${currentProject}`, selectedFile);
+    localStorage.setItem(`codesphere_${userKey}_files_${currentProject}`, JSON.stringify(files));
+    localStorage.setItem(`codesphere_${userKey}_open_files_${currentProject}`, JSON.stringify(openFiles));
+    localStorage.setItem(`codesphere_${userKey}_selected_file_${currentProject}`, selectedFile);
 
-    const savedFiles = localStorage.getItem(`code-editor-files-${project}`);
-    const savedOpenFiles = localStorage.getItem(`code-editor-open-files-${project}`);
-    const savedSelectedFile = localStorage.getItem(`code-editor-selected-file-${project}`);
+    const savedFiles = localStorage.getItem(`codesphere_${userKey}_files_${project}`);
+    const savedOpenFiles = localStorage.getItem(`codesphere_${userKey}_open_files_${project}`);
+    const savedSelectedFile = localStorage.getItem(`codesphere_${userKey}_selected_file_${project}`);
 
     const newFiles = savedFiles ? JSON.parse(savedFiles) : defaultFiles;
     const newOpenFiles = savedOpenFiles ? JSON.parse(savedOpenFiles) : ["App.jsx"];

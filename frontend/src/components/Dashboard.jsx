@@ -47,13 +47,17 @@ function Dashboard({
   const safeProjects = Array.isArray(projects) ? projects : [];
   const safeFiles = Array.isArray(files) ? files : [];
 
+  const userKey = user
+    ? (user.username || user.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_")
+    : "guest";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  // Session History State (stored in localStorage)
+  // Session History State (stored per-account in localStorage)
   const [sessionHistory, setSessionHistory] = useState(() => {
-    const saved = localStorage.getItem("codesphere_session_history");
+    const saved = localStorage.getItem(`codesphere_${userKey}_session_history`);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -62,16 +66,15 @@ function Dashboard({
       }
     }
     return [
-      { id: 1, durationFormatted: "01:14:20", durationSecs: 4460, date: "Sep 2, 2026, 04:30 PM", project: "My React Project" },
-      { id: 2, durationFormatted: "00:45:10", durationSecs: 2710, date: "Sep 3, 2026, 10:15 AM", project: "My React Project" }
+      { id: 1, durationFormatted: "00:25:40", durationSecs: 1540, date: "Sep 2, 2026, 04:30 PM", project: `${user?.name || "User"}'s Workspace` }
     ];
   });
 
-  // Persistent Active Session Timer State
+  // Persistent Active Session Timer State (per-account)
   const [sessionTimer, setSessionTimer] = useState(() => {
-    const savedStartTime = localStorage.getItem("codesphere_session_start_time");
-    const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "0", 10);
-    const isPaused = localStorage.getItem("codesphere_session_paused") === "true";
+    const savedStartTime = localStorage.getItem(`codesphere_${userKey}_session_start_time`);
+    const savedAccumulated = parseInt(localStorage.getItem(`codesphere_${userKey}_session_accumulated`) || "0", 10);
+    const isPaused = localStorage.getItem(`codesphere_${userKey}_session_paused`) === "true";
 
     if (isPaused) {
       return savedAccumulated;
@@ -79,9 +82,9 @@ function Dashboard({
 
     if (!savedStartTime) {
       const now = Date.now();
-      localStorage.setItem("codesphere_session_start_time", now.toString());
-      localStorage.setItem("codesphere_session_accumulated", "0");
-      localStorage.setItem("codesphere_session_paused", "false");
+      localStorage.setItem(`codesphere_${userKey}_session_start_time`, now.toString());
+      localStorage.setItem(`codesphere_${userKey}_session_accumulated`, "0");
+      localStorage.setItem(`codesphere_${userKey}_session_paused`, "false");
       return 0;
     }
 
@@ -90,16 +93,49 @@ function Dashboard({
   });
 
   const [isTimerRunning, setIsTimerRunning] = useState(() => {
-    return localStorage.getItem("codesphere_session_paused") !== "true";
+    return localStorage.getItem(`codesphere_${userKey}_session_paused`) !== "true";
   });
+
+  // Reload timer and history when active user account changes
+  useEffect(() => {
+    const savedHist = localStorage.getItem(`codesphere_${userKey}_session_history`);
+    if (savedHist) {
+      try {
+        setSessionHistory(JSON.parse(savedHist));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      setSessionHistory([
+        { id: Date.now(), durationFormatted: "00:15:30", durationSecs: 930, date: "Initial Session", project: `${user?.name || "My"} React Project` }
+      ]);
+    }
+
+    const savedStartTime = localStorage.getItem(`codesphere_${userKey}_session_start_time`);
+    const savedAccumulated = parseInt(localStorage.getItem(`codesphere_${userKey}_session_accumulated`) || "0", 10);
+    const isPaused = localStorage.getItem(`codesphere_${userKey}_session_paused`) === "true";
+
+    if (!savedStartTime || isPaused) {
+      const now = Date.now();
+      localStorage.setItem(`codesphere_${userKey}_session_start_time`, now.toString());
+      localStorage.setItem(`codesphere_${userKey}_session_accumulated`, "0");
+      localStorage.setItem(`codesphere_${userKey}_session_paused`, "false");
+      setSessionTimer(0);
+      setIsTimerRunning(true);
+    } else {
+      const elapsed = Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000);
+      setSessionTimer(savedAccumulated + elapsed);
+      setIsTimerRunning(true);
+    }
+  }, [userKey]);
 
   // Real-time persistent session interval
   useEffect(() => {
     let interval = null;
     if (isTimerRunning) {
       interval = setInterval(() => {
-        const savedStartTime = localStorage.getItem("codesphere_session_start_time");
-        const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "0", 10);
+        const savedStartTime = localStorage.getItem(`codesphere_${userKey}_session_start_time`);
+        const savedAccumulated = parseInt(localStorage.getItem(`codesphere_${userKey}_session_accumulated`) || "0", 10);
 
         if (savedStartTime) {
           const elapsed = Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000);
@@ -110,32 +146,19 @@ function Dashboard({
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning]);
-
-  // Auto-start session timer automatically on login or dashboard mount
-  useEffect(() => {
-    const savedStartTime = localStorage.getItem("codesphere_session_start_time");
-    const isPaused = localStorage.getItem("codesphere_session_paused") === "true";
-
-    if (!savedStartTime || isPaused) {
-      const now = Date.now();
-      localStorage.setItem("codesphere_session_start_time", now.toString());
-      localStorage.setItem("codesphere_session_paused", "false");
-      setIsTimerRunning(true);
-    }
-  }, []);
+  }, [isTimerRunning, userKey]);
 
   const handleToggleTimer = () => {
     if (isTimerRunning) {
       // Pause: Save current total seconds to accumulated and mark paused
-      localStorage.setItem("codesphere_session_accumulated", sessionTimer.toString());
-      localStorage.removeItem("codesphere_session_start_time");
-      localStorage.setItem("codesphere_session_paused", "true");
+      localStorage.setItem(`codesphere_${userKey}_session_accumulated`, sessionTimer.toString());
+      localStorage.removeItem(`codesphere_${userKey}_session_start_time`);
+      localStorage.setItem(`codesphere_${userKey}_session_paused`, "true");
       setIsTimerRunning(false);
     } else {
       // Resume: Set new start timestamp and unpause
-      localStorage.setItem("codesphere_session_start_time", Date.now().toString());
-      localStorage.setItem("codesphere_session_paused", "false");
+      localStorage.setItem(`codesphere_${userKey}_session_start_time`, Date.now().toString());
+      localStorage.setItem(`codesphere_${userKey}_session_paused`, "false");
       setIsTimerRunning(true);
     }
   };
@@ -158,13 +181,13 @@ function Dashboard({
 
       const updatedHistory = [newHistoryItem, ...sessionHistory];
       setSessionHistory(updatedHistory);
-      localStorage.setItem("codesphere_session_history", JSON.stringify(updatedHistory));
+      localStorage.setItem(`codesphere_${userKey}_session_history`, JSON.stringify(updatedHistory));
     }
 
     // Reset active session state in localStorage & timer
-    localStorage.removeItem("codesphere_session_start_time");
-    localStorage.setItem("codesphere_session_accumulated", "0");
-    localStorage.setItem("codesphere_session_paused", "true");
+    localStorage.removeItem(`codesphere_${userKey}_session_start_time`);
+    localStorage.setItem(`codesphere_${userKey}_session_accumulated`, "0");
+    localStorage.setItem(`codesphere_${userKey}_session_paused`, "true");
     setSessionTimer(0);
     setIsTimerRunning(false);
   };
@@ -172,7 +195,7 @@ function Dashboard({
   const handleClearHistory = () => {
     if (window.confirm("Are you sure you want to clear all session history logs?")) {
       setSessionHistory([]);
-      localStorage.removeItem("codesphere_session_history");
+      localStorage.removeItem(`codesphere_${userKey}_session_history`);
     }
   };
 
