@@ -28,15 +28,34 @@ function SignIn({ onSignIn, onGuestContinue }) {
   const [customGmail, setCustomGmail] = useState("adarshmohit9334@gmail.com");
   const [customGithub, setCustomGithub] = useState("adarshmohit9334");
 
+  const isValidEmail = (emailStr) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(emailStr).trim().toLowerCase());
+  };
+
   // Handle Google OAuth Sign In
   const executeGoogleSignIn = (userEmail = customGmail) => {
+    const emailVal = userEmail.trim();
+
+    if (!emailVal) {
+      const msg = "No Gmail Account Found! Please enter a valid Gmail address.";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
+    if (!isValidEmail(emailVal)) {
+      const msg = "No Gmail Account Found! Invalid Gmail format (e.g. name@gmail.com).";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
     setLoadingProvider("google");
     setErrorMessage("");
     setActiveModal(null);
 
     setTimeout(() => {
-      const emailVal = userEmail.trim() || "adarshmohit9334@gmail.com";
-      const nameVal = "Adarsh Kumar";
+      const nameVal = emailVal.split("@")[0] || "Adarsh Kumar";
       const googleUser = {
         name: nameVal,
         email: emailVal,
@@ -56,15 +75,23 @@ function SignIn({ onSignIn, onGuestContinue }) {
 
   // Handle GitHub OAuth Sign In
   const executeGitHubSignIn = (githubUserHandle = customGithub) => {
+    const username = githubUserHandle.trim();
+
+    if (!username || username.length < 2) {
+      const msg = "GitHub Account Not Found! Please enter a valid GitHub username.";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
     setLoadingProvider("github");
     setErrorMessage("");
     setActiveModal(null);
 
     setTimeout(() => {
-      const username = githubUserHandle.trim() || "adarshmohit9334";
       const githubUser = {
-        name: "Adarsh Kumar",
-        email: "adarshmohit9334@gmail.com",
+        name: username,
+        email: `${username}@users.noreply.github.com`,
         username: username,
         role: `GitHub Developer (@${username})`,
         plan: "Pro Developer ⚡",
@@ -93,13 +120,34 @@ function SignIn({ onSignIn, onGuestContinue }) {
     e.preventDefault();
     setErrorMessage("");
 
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage("Please enter both email and password.");
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      const msg = "Invalid Credentials! Please enter both email and password.";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      const msg = "Invalid Email Format! Please enter a valid email address (e.g. name@domain.com).";
+      setErrorMessage(msg);
+      alert(msg);
+      return;
+    }
+
+    if (cleanPassword.length < 4) {
+      const msg = "Invalid Credentials! Password must be at least 4 characters long.";
+      setErrorMessage(msg);
+      alert(msg);
       return;
     }
 
     if (isSignUp && !name.trim()) {
-      setErrorMessage("Please enter your name to register.");
+      const msg = "Please enter your full name to register.";
+      setErrorMessage(msg);
+      alert(msg);
       return;
     }
 
@@ -107,8 +155,8 @@ function SignIn({ onSignIn, onGuestContinue }) {
 
     setTimeout(() => {
       const userObj = {
-        name: isSignUp ? name.trim() : (email.split("@")[0] || "Adarsh Kumar"),
-        email: email.trim(),
+        name: isSignUp ? name.trim() : (cleanEmail.split("@")[0] || "Adarsh Kumar"),
+        email: cleanEmail,
         role: "Full-Stack Developer",
         plan: "Pro Developer ⚡",
         provider: "Email",

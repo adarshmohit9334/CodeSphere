@@ -23,7 +23,9 @@ import {
   Sparkles,
   ShieldCheck,
   Cpu,
-  Globe
+  Globe,
+  History,
+  Trash
 } from "lucide-react";
 
 function Dashboard({
@@ -47,10 +49,28 @@ function Dashboard({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  // Persistent Session Timer State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Session History State (stored in localStorage)
+  const [sessionHistory, setSessionHistory] = useState(() => {
+    const saved = localStorage.getItem("codesphere_session_history");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse session history:", e);
+      }
+    }
+    return [
+      { id: 1, durationFormatted: "01:14:20", durationSecs: 4460, date: "Sep 2, 2026, 04:30 PM", project: "My React Project" },
+      { id: 2, durationFormatted: "00:45:10", durationSecs: 2710, date: "Sep 3, 2026, 10:15 AM", project: "My React Project" }
+    ];
+  });
+
+  // Persistent Active Session Timer State
   const [sessionTimer, setSessionTimer] = useState(() => {
     const savedStartTime = localStorage.getItem("codesphere_session_start_time");
-    const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "1437", 10);
+    const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "0", 10);
     const isPaused = localStorage.getItem("codesphere_session_paused") === "true";
 
     if (isPaused) {
@@ -60,9 +80,9 @@ function Dashboard({
     if (!savedStartTime) {
       const now = Date.now();
       localStorage.setItem("codesphere_session_start_time", now.toString());
-      localStorage.setItem("codesphere_session_accumulated", "1437");
+      localStorage.setItem("codesphere_session_accumulated", "0");
       localStorage.setItem("codesphere_session_paused", "false");
-      return 1437;
+      return 0;
     }
 
     const elapsedSinceStart = Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000);
@@ -79,7 +99,7 @@ function Dashboard({
     if (isTimerRunning) {
       interval = setInterval(() => {
         const savedStartTime = localStorage.getItem("codesphere_session_start_time");
-        const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "1437", 10);
+        const savedAccumulated = parseInt(localStorage.getItem("codesphere_session_accumulated") || "0", 10);
 
         if (savedStartTime) {
           const elapsed = Math.floor((Date.now() - parseInt(savedStartTime, 10)) / 1000);
@@ -91,6 +111,19 @@ function Dashboard({
     }
     return () => clearInterval(interval);
   }, [isTimerRunning]);
+
+  // Auto-start session timer automatically on login or dashboard mount
+  useEffect(() => {
+    const savedStartTime = localStorage.getItem("codesphere_session_start_time");
+    const isPaused = localStorage.getItem("codesphere_session_paused") === "true";
+
+    if (!savedStartTime || isPaused) {
+      const now = Date.now();
+      localStorage.setItem("codesphere_session_start_time", now.toString());
+      localStorage.setItem("codesphere_session_paused", "false");
+      setIsTimerRunning(true);
+    }
+  }, []);
 
   const handleToggleTimer = () => {
     if (isTimerRunning) {
@@ -104,6 +137,42 @@ function Dashboard({
       localStorage.setItem("codesphere_session_start_time", Date.now().toString());
       localStorage.setItem("codesphere_session_paused", "false");
       setIsTimerRunning(true);
+    }
+  };
+
+  const saveCurrentSessionToHistory = () => {
+    if (sessionTimer > 0) {
+      const newHistoryItem = {
+        id: Date.now(),
+        durationFormatted: formatTimer(sessionTimer),
+        durationSecs: sessionTimer,
+        date: new Date().toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }),
+        project: currentProject || "My React Project"
+      };
+
+      const updatedHistory = [newHistoryItem, ...sessionHistory];
+      setSessionHistory(updatedHistory);
+      localStorage.setItem("codesphere_session_history", JSON.stringify(updatedHistory));
+    }
+
+    // Reset active session state in localStorage & timer
+    localStorage.removeItem("codesphere_session_start_time");
+    localStorage.setItem("codesphere_session_accumulated", "0");
+    localStorage.setItem("codesphere_session_paused", "true");
+    setSessionTimer(0);
+    setIsTimerRunning(false);
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm("Are you sure you want to clear all session history logs?")) {
+      setSessionHistory([]);
+      localStorage.removeItem("codesphere_session_history");
     }
   };
 
@@ -143,11 +212,12 @@ function Dashboard({
   );
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out of CodeSphere?")) {
+    if (window.confirm("Are you sure you want to log out of CodeSphere? Your active coding session will be saved to history and reset.")) {
+      saveCurrentSessionToHistory();
       if (onSignOut) {
         onSignOut();
       } else {
-        alert("Logged out successfully! Session ended.");
+        alert("Logged out successfully! Session saved and reset.");
       }
     }
   };
@@ -159,7 +229,18 @@ function Dashboard({
         <div className="user-profile-header">
           <div className="profile-avatar-wrapper">
             <div className="profile-avatar">
-              <User size={28} />
+              {userProfile.avatar ? (
+                <img
+                  src={userProfile.avatar}
+                  alt={userProfile.name}
+                  style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
+                />
+              ) : (
+                <User size={28} />
+              )}
             </div>
             <span className="online-indicator" title="User Online"></span>
           </div>
@@ -172,7 +253,13 @@ function Dashboard({
               </span>
             </div>
             <p className="profile-email">
-              {userProfile.email} • <span className="role-tag">{userProfile.role}</span>
+              {userProfile.provider === "GitHub" && userProfile.username ? (
+                <span>@{userProfile.username}</span>
+              ) : (
+                <span>{userProfile.email}</span>
+              )}
+              {" • "}
+              <span className="role-tag">{userProfile.role}</span>
             </p>
           </div>
         </div>
@@ -474,6 +561,15 @@ function Dashboard({
                 </>
               )}
             </button>
+
+            <button
+              className="btn-history-toggle"
+              onClick={() => setShowHistoryModal(true)}
+              title="View Past Recorded Session History Logs"
+            >
+              <History size={14} />
+              <span>Session History ({sessionHistory.length})</span>
+            </button>
           </div>
 
           {/* CODING ACTIVITY CHART */}
@@ -629,6 +725,62 @@ function Dashboard({
               <div className="modal-footer">
                 <button className="btn-primary" onClick={() => setShowSettingsModal(false)}>
                   Save Preferences
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SESSION HISTORY MODAL */}
+      {showHistoryModal && (
+        <div className="modal-backdrop" onClick={() => setShowHistoryModal(false)}>
+          <div className="modal-content history-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <History size={18} />
+                <h3>Past Coding Sessions History</h3>
+              </div>
+              <button className="close-modal" onClick={() => setShowHistoryModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="history-summary-bar">
+                <span>Total Recorded Sessions: <strong>{sessionHistory.length}</strong></span>
+                {sessionHistory.length > 0 && (
+                  <button className="btn-clear-history" onClick={handleClearHistory}>
+                    <Trash size={13} />
+                    <span>Clear History</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="session-history-list">
+                {sessionHistory.map((item) => (
+                  <div key={item.id} className="session-history-item">
+                    <div className="session-item-main">
+                      <div className="session-item-header">
+                        <span className="session-project-name">📁 {item.project}</span>
+                        <span className="session-duration-badge">{item.durationFormatted}</span>
+                      </div>
+                      <span className="session-date-stamp">⏱ {item.date}</span>
+                    </div>
+                  </div>
+                ))}
+
+                {sessionHistory.length === 0 && (
+                  <div className="empty-history-state">
+                    <History size={32} />
+                    <p>No past session history recorded yet.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-primary" onClick={() => setShowHistoryModal(false)}>
+                  Close
                 </button>
               </div>
             </div>
