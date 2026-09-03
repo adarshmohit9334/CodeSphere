@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Component } from "react";
 
 import Navbar from "./components/Navbar";
 import ActivityBar from "./components/ActivityBar";
@@ -10,10 +10,47 @@ import OutputPanel from "./components/OutputPanel";
 import StatusBar from "./components/StatusBar";
 
 import Dashboard from "./components/Dashboard";
+import SignIn from "./components/SignIn";
 import AiAssistantPanel from "./components/AiAssistantPanel";
 import InputDialogModal from "./components/InputDialogModal";
 
 import "./App.css";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: "center", color: "#f8fafc", background: "#090d16", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <h2>Workspace State Sync Issue</h2>
+          <p style={{ color: "#ef4444", margin: "16px 0", maxWidth: 500 }}>{this.state.error?.toString()}</p>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              window.location.reload();
+            }}
+            style={{ padding: "10px 20px", background: "#0284c7", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: "bold" }}
+          >
+            Reset Workspace Cache &amp; Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -38,12 +75,33 @@ const defaultFiles = [
 const defaultProjects = ["My React Project", "Untitled Project"];
 
 function App() {
+  // User Authentication State
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("codesphere_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   // State
-  const [viewMode, setViewMode] = useState("editor"); // 'editor' | 'dashboard'
+  const [viewMode, setViewMode] = useState(() => {
+    const savedUser = localStorage.getItem("codesphere_user");
+    return savedUser ? "dashboard" : "signin"; // 'signin' | 'editor' | 'dashboard'
+  });
   const [activeTab, setActiveTab] = useState("explorer"); // 'explorer' | 'search' | 'debug'
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("code-editor-theme") || "vs-light";
+    return localStorage.getItem("code-editor-theme") || "vs-dark";
   });
+
+  const handleSignIn = (userObj) => {
+    setUser(userObj);
+    setViewMode("dashboard");
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem("codesphere_user");
+    localStorage.removeItem("codesphere_auth_token");
+    setUser(null);
+    setViewMode("signin");
+  };
 
   // Save theme preference to LocalStorage
   useEffect(() => {
@@ -170,7 +228,7 @@ function App() {
     title: "",
     placeholder: "",
     defaultValue: "",
-    onSubmit: () => {}
+    onSubmit: () => { }
   });
 
   const openInputModal = (title, placeholder, defaultValue, onSubmit, isConfirm = false, confirmText = "") => {
@@ -503,6 +561,15 @@ function App() {
 
   const selectedFileData = files.find((f) => f.name === selectedFile);
 
+  if (viewMode === "signin") {
+    return (
+      <SignIn
+        onSignIn={handleSignIn}
+        onGuestContinue={() => setViewMode("dashboard")}
+      />
+    );
+  }
+
   return (
     <div className={`app-container ${theme}`}>
       <Navbar
@@ -519,23 +586,29 @@ function App() {
         onExportProject={handleExportProject}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        user={user}
+        onSignOut={handleSignOut}
       />
 
       {viewMode === "dashboard" ? (
-        <Dashboard
-          projects={projects}
-          files={files}
-          currentProject={currentProject}
-          onSelectProject={handleProjectSelect}
-          onCreateProject={handleCreateProject}
-          onRenameProject={handleRenameProject}
-          onDeleteProject={handleDeleteProject}
-          onViewEditor={() => setViewMode("editor")}
-          backendStatus={backendStatus}
-          theme={theme}
-          setTheme={setTheme}
-          runCount={runCode}
-        />
+        <ErrorBoundary>
+          <Dashboard
+            projects={projects || []}
+            files={files || []}
+            currentProject={currentProject || "My React Project"}
+            onSelectProject={handleProjectSelect}
+            onCreateProject={handleCreateProject}
+            onRenameProject={handleRenameProject}
+            onDeleteProject={handleDeleteProject}
+            onViewEditor={() => setViewMode("editor")}
+            backendStatus={backendStatus}
+            theme={theme}
+            setTheme={setTheme}
+            runCount={runCode}
+            user={user}
+            onSignOut={handleSignOut}
+          />
+        </ErrorBoundary>
       ) : (
         <div className="workspace">
           {/* ACTIVITY BAR */}

@@ -13,7 +13,9 @@ function Navbar({
   setTheme,
   onExportProject,
   viewMode,
-  setViewMode
+  setViewMode,
+  user,
+  onSignOut
 }) {
   const [showProjects, setShowProjects] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -231,6 +233,25 @@ function Navbar({
           <button className="run-button" onClick={runCode} title="Run Project (Ctrl+Enter / Cmd+Enter)">
             ▶ Run
           </button>
+
+          {/* USER AUTH STATUS */}
+          {user ? (
+            <button
+              className="user-badge-button"
+              onClick={onSignOut}
+              title={`Logged in as ${user.name} (${user.email}). Click to Sign Out`}
+            >
+              <span>👤 {user.name.split(" ")[0]}</span>
+            </button>
+          ) : (
+            <button
+              className="signin-nav-button"
+              onClick={() => setViewMode("signin")}
+              title="Sign In / Register"
+            >
+              🔑 Sign In
+            </button>
+          )}
         </div>
       )}
 
