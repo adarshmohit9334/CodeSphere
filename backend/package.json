@@ -9,7 +9,9 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "nodemailer": "^9.1.1"
   }
