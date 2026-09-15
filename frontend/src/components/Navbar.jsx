@@ -15,7 +15,9 @@ function Navbar({
   viewMode,
   setViewMode,
   user,
-  onSignOut
+  onSignOut,
+  showPreview,
+  setShowPreview
 }) {
   const [showProjects, setShowProjects] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -227,6 +229,16 @@ function Navbar({
           {/* SAVE BUTTON */}
           <button className="save-button" onClick={saveCode} title="Save Project (Ctrl+S / Cmd+S)">
             💾 Save
+          </button>
+
+          {/* TOGGLE PREVIEW BUTTON */}
+          <button 
+            className="save-button" 
+            style={{ backgroundColor: '#21262d', border: '1px solid #30363d', marginLeft: '8px' }} 
+            onClick={() => setShowPreview(!showPreview)} 
+            title="Toggle Web Preview"
+          >
+            {showPreview ? "🙈 Hide Preview" : "👁️ Show Preview"}
           </button>
 
           {/* RUN BUTTON */}

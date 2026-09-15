@@ -86,8 +86,15 @@ function App() {
   // State
   const [viewMode, setViewMode] = useState(() => {
     const savedUser = localStorage.getItem("codesphere_user");
-    return savedUser ? "dashboard" : "signin"; // 'signin' | 'editor' | 'dashboard'
+    if (!savedUser) return "signin";
+    return localStorage.getItem("codesphere_view_mode") || "dashboard"; // 'signin' | 'editor' | 'dashboard'
   });
+
+  useEffect(() => {
+    if (viewMode !== "signin") {
+      localStorage.setItem("codesphere_view_mode", viewMode);
+    }
+  }, [viewMode]);
   const [activeTab, setActiveTab] = useState("explorer"); // 'explorer' | 'search' | 'debug'
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("code-editor-theme") || "vs-dark";
@@ -112,7 +119,8 @@ function App() {
     localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(userObj));
 
     setUser(userObj);
-    setViewMode("dashboard");
+    const savedMode = localStorage.getItem("codesphere_view_mode");
+    setViewMode(savedMode || "dashboard");
   };
 
   // Real Supabase Session Listener (Google SSO Redirect & Auth Persistence)
@@ -245,6 +253,32 @@ function App() {
   const [dirtyFiles, setDirtyFiles] = useState([]);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [bottomTab, setBottomTab] = useState("terminal"); // 'output' | 'terminal'
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(300);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const startResizing = (mouseDownEvent) => {
+    mouseDownEvent.preventDefault();
+    const startY = mouseDownEvent.clientY;
+    const startHeight = bottomPanelHeight;
+
+    const onMouseMove = (mouseMoveEvent) => {
+      // Calculate new height: dragging up increases height, dragging down decreases
+      const deltaY = startY - mouseMoveEvent.clientY;
+      const newHeight = Math.max(100, Math.min(window.innerHeight * 0.8, startHeight + deltaY));
+      setBottomPanelHeight(newHeight);
+      
+      // Dispatch custom resize event so xterm can recalculate fit
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
 
   // ----------------------------------------------------
   // Backend Connection Health Check & Initial Sync
@@ -437,8 +471,36 @@ function App() {
   // Run Code
   const handleRunCode = useCallback(() => {
     setOutput("");
-    setRunCode((prev) => prev + 1);
-  }, []);
+    const selectedData = files.find(f => f.name === selectedFile);
+    if (!selectedData) return;
+
+    const lang = selectedData.language;
+    
+    // Web languages run in Preview iframe
+    if (["javascript", "html", "css", "typescript"].includes(lang) && (selectedFile.endsWith('.jsx') || selectedFile.endsWith('.js') || selectedFile.endsWith('.html'))) {
+      setRunCode((prev) => prev + 1);
+    } else {
+      // Backend Execution for Python, Java, C, C++, raw JS, etc.
+      setBottomTab("output");
+      setOutput("Running code...\n");
+      fetch(`${API_BASE}/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: selectedData.code, language: lang })
+      })
+      .then(res => res.json())
+      .then(data => {
+         if (data.success) {
+           setOutput(data.output || "Program finished with no output.");
+         } else {
+           setOutput(`Error:\n${data.output || data.errors.join('\\n')}`);
+         }
+      })
+      .catch(err => {
+         setOutput(`Network Error: ${err.message}`);
+      });
+    }
+  }, [files, selectedFile]);
 
   // Export Project
   const handleExportProject = () => {
@@ -501,6 +563,14 @@ function App() {
         return "html";
       case "json":
         return "json";
+      case "py":
+        return "python";
+      case "java":
+        return "java";
+      case "c":
+        return "c";
+      case "cpp":
+        return "cpp";
       default:
         return "plaintext";
     }
@@ -663,6 +733,8 @@ function App() {
   return (
     <div className={`app-container ${theme}`}>
       <Navbar
+        showPreview={showPreview}
+        setShowPreview={setShowPreview}
         runCode={handleRunCode}
         saveCode={handleSaveCode}
         currentProject={currentProject}
@@ -776,11 +848,29 @@ function App() {
 
           {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
           <div className="right-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
-            </div>
+            {showPreview && (
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
+              </div>
+            )}
             
-            <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '35%', minHeight: '200px', backgroundColor: '#0d1117', borderTop: '1px solid #30363d' }}>
+            {/* DRAG HANDLE FOR RESIZING BOTTOM PANEL */}
+            {showPreview && (
+              <div 
+                onMouseDown={startResizing}
+                style={{
+                  height: '4px',
+                  cursor: 'row-resize',
+                  backgroundColor: '#30363d',
+                  width: '100%',
+                  zIndex: 10
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
+              />
+            )}
+
+            <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: showPreview ? `${bottomPanelHeight}px` : '100%', flex: showPreview ? 'none' : 1, minHeight: '100px', backgroundColor: '#0d1117' }}>
               <div className="bottom-panel-tabs" style={{ display: 'flex', gap: '16px', padding: '8px 16px', borderBottom: '1px solid #30363d', backgroundColor: '#161b22', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <div 
                   style={{ cursor: 'pointer', color: bottomTab === 'output' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'output' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
