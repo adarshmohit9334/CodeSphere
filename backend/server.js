@@ -71,7 +71,7 @@ io.on("connection", (socket) => {
   // Fallback to child_process.spawn since node-pty fails in this sandbox
   const shellProcess = spawn(shell, ['-i'], {
     cwd: process.env.HOME || process.cwd(),
-    env: process.env,
+    env: { ...process.env, TERM: "xterm-256color", FORCE_COLOR: "1" },
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
