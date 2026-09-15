@@ -14,6 +14,7 @@ import Dashboard from "./components/Dashboard";
 import SignIn from "./components/SignIn";
 import AiAssistantPanel from "./components/AiAssistantPanel";
 import InputDialogModal from "./components/InputDialogModal";
+import TerminalPanel from "./components/TerminalPanel";
 
 import "./App.css";
 
@@ -243,6 +244,7 @@ function App() {
   const [runCode, setRunCode] = useState(0);
   const [dirtyFiles, setDirtyFiles] = useState([]);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+  const [bottomTab, setBottomTab] = useState("terminal"); // 'output' | 'terminal'
 
   // ----------------------------------------------------
   // Backend Connection Health Check & Initial Sync
@@ -773,9 +775,35 @@ function App() {
           />
 
           {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
-          <div className="right-panel">
-            <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
-            <OutputPanel output={output} clearOutput={clearOutput} />
+          <div className="right-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
+            </div>
+            
+            <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: '35%', minHeight: '200px', backgroundColor: '#0d1117', borderTop: '1px solid #30363d' }}>
+              <div className="bottom-panel-tabs" style={{ display: 'flex', gap: '16px', padding: '8px 16px', borderBottom: '1px solid #30363d', backgroundColor: '#161b22', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div 
+                  style={{ cursor: 'pointer', color: bottomTab === 'output' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'output' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
+                  onClick={() => setBottomTab('output')}
+                >
+                  Output
+                </div>
+                <div 
+                  style={{ cursor: 'pointer', color: bottomTab === 'terminal' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'terminal' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
+                  onClick={() => setBottomTab('terminal')}
+                >
+                  Terminal
+                </div>
+              </div>
+              <div className="bottom-panel-content" style={{ flex: 1, overflow: 'hidden' }}>
+                {bottomTab === 'output' && (
+                  <OutputPanel output={output} clearOutput={clearOutput} />
+                )}
+                {bottomTab === 'terminal' && (
+                  <TerminalPanel />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
