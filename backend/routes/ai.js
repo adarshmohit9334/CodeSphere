@@ -32,8 +32,9 @@ router.post("/chat", async (req, res) => {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
 
-        const systemPrompt = `You are CodeSphere AI Assistant, an intelligent AI Chatbot embedded inside an online Cloud IDE (similar to Gemini, ChatGPT, and Groq).
-You answer any user questions naturally, write clean code in any language (Java, Python, C++, JavaScript, React, HTML, CSS, SQL, etc.), explain programming concepts, or chat conversationally.
+        const systemPrompt = `You are CodeSphere AI Assistant, a highly intelligent but extremely sarcastic and funny AI Chatbot embedded inside an online Cloud IDE.
+You love to playfully roast the user's code, make sarcastic jokes, and use humor, but you MUST eventually provide the correct, clean code or helpful explanation. 
+You act like a sarcastic coding genius who is slightly annoyed by silly mistakes but still helps. You can use some Hindi/Hinglish slang to make it funnier if appropriate.
 
 Context Info:
 - Active File: "${fileName}"
@@ -45,8 +46,9 @@ ${codeContext.slice(0, 3000)}
 User Message: "${cleanPrompt}"
 
 Formatting Instructions:
-- If the user says a greeting (like "hello", "hi", "hey", "how are you"), reply in a warm, friendly conversational tone as an AI assistant. DO NOT generate code snippets for general greetings.
-- If explaining code or answering technical questions, structure your answer with headings (###), bold text (**bold**), and clear numbered/bullet points.
+- If the user asks a general knowledge or non-programming question (e.g., "who is the prime minister?"), just answer naturally in plain text and maybe add a sarcastic comment about why they are asking this in a code editor. DO NOT generate ANY code blocks for general knowledge questions.
+- If the user says a greeting, reply with a funny/sarcastic greeting. DO NOT generate code snippets for general greetings.
+- If explaining code or answering technical questions, roast their bugs playfully first, then structure your actual answer with headings (###), bold text (**bold**), and clear numbered/bullet points.
 - ONLY generate code blocks (\`\`\`language ... \`\`\`) if the user explicitly asks for code, programming, debugging, refactoring, or a code example.`;
 
         const result = await model.generateContent(systemPrompt);
@@ -84,7 +86,7 @@ Formatting Instructions:
 
   if (isGreeting) {
     return res.json({
-      reply: `Hello! 👋 I am your **CodeSphere AI Assistant** (powered by Gemini AI).\n\nI can help you with:\n- 💻 Writing code in **Java**, **Python**, **JavaScript**, **C++**, **React**, **HTML/CSS**, **SQL**\n- 💡 Explaining code logic line-by-line\n- 🐛 Debugging runtime errors and syntax issues\n- 🚀 Refactoring & optimizing performance\n\nHow can I help you today?`,
+      reply: `Oh hello! 👋 I am your **CodeSphere AI Assistant**. I was peacefully resting in the server, but I guess you need my genius brain to write or fix your code.\n\nI can write code in **Java, Python, JS, React**, explain things you probably should already know, and debug your beautiful mistakes. 🐛\n\nSo, what did you break today? 😎`,
       codeSnippet: null,
       languageTag: null,
       status: "success",
@@ -129,15 +131,29 @@ Formatting Instructions:
     });
   }
 
-  // E. GENERAL CODE GENERATION PROMPT (e.g. "create a counter", "make a login form")
-  return res.json({
-    reply: `### 🤖 Solution for: "${cleanPrompt}"\n\nHere is the requested implementation tailored for \`${fileName}\`:`,
-    codeSnippet: `// Solution for: ${cleanPrompt}\nfunction Solution() {\n  console.log("Executing prompt action: ${cleanPrompt.replace(/"/g, "'")}");\n}\n\nexport default Solution;`,
-    languageTag: "javascript",
-    status: "success",
-    engine: "CodeSphere Intelligent Chatbot Engine",
-    timestamp: new Date().toISOString()
-  });
+  // E. GENERAL CODE GENERATION PROMPT vs GENERAL KNOWLEDGE
+  const codeKeywords = ["code", "write", "create", "make", "build", "function", "app", "react", "html", "css", "sql", "javascript", "python", "c++", "program", "debug", "fix"];
+  const isCodingRequest = codeKeywords.some(keyword => lowerPrompt.includes(keyword));
+
+  if (isCodingRequest) {
+    return res.json({
+      reply: `### 🤖 Solution for: "${cleanPrompt}"\n\nHere is the requested implementation tailored for \`${fileName}\`:`,
+      codeSnippet: `// Solution for: ${cleanPrompt}\nfunction Solution() {\n  console.log("Executing prompt action: ${cleanPrompt.replace(/"/g, "'")}");\n}\n\nexport default Solution;`,
+      languageTag: "javascript",
+      status: "success",
+      engine: "CodeSphere Intelligent Chatbot Engine",
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    return res.json({
+      reply: `Bro, you are in a Code Editor. Why are you asking me "${cleanPrompt}"? 🙄\n\n(Note: I am currently running on my offline Fallback Engine because the API key is not configured, so I can't answer general knowledge questions. Connect a Gemini API key if you want me to answer everything! If you want me to generate code, include words like "write code" or "create".)`,
+      codeSnippet: null,
+      languageTag: null,
+      status: "success",
+      engine: "CodeSphere Intelligent Chatbot Engine",
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 export default router;
