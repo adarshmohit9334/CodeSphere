@@ -1,7 +1,7 @@
 {
   "name": "online-code-editor-backend",
   "version": "1.0.0",
-  "description": "Backend API server for VS Code Online Code Editor Clone",
+  "description": "Backend API server for CodeSphere",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "mysql2": "^3.24.4",
     "node-pty": "^1.1.0",
     "nodemailer": "^9.1.1",
     "socket.io": "^4.8.3"

@@ -24,17 +24,16 @@ router.post("/chat", async (req, res) => {
   const lowerPrompt = cleanPrompt.toLowerCase();
   const genAI = getGeminiClient();
 
-  // 1. REAL GEMINI AI INTEGRATION (TRYING AVAILABLE MODELS)
   if (genAI) {
-    const modelsToTry = ["gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash"];
+    const modelsToTry = ["gemini-3.6-flash", "gemini-1.5-flash", "gemini-pro", "gemini-2.0-flash"];
+    let lastError = null;
 
     for (const modelName of modelsToTry) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
 
-        const systemPrompt = `You are CodeSphere AI Assistant, a highly intelligent but extremely sarcastic and funny AI Chatbot embedded inside an online Cloud IDE.
-You love to playfully roast the user's code, make sarcastic jokes, and use humor, but you MUST eventually provide the correct, clean code or helpful explanation. 
-You act like a sarcastic coding genius who is slightly annoyed by silly mistakes but still helps. You can use some Hindi/Hinglish slang to make it funnier if appropriate.
+        const systemPrompt = `You are CodeSphere AI Assistant, a highly intelligent and professional AI Chatbot embedded inside an online Cloud IDE.
+You provide direct, concise, and accurate answers to the user's questions without any unnecessary jokes, sarcasm, or filler text.
 
 Context Info:
 - Active File: "${fileName}"
@@ -46,9 +45,9 @@ ${codeContext.slice(0, 3000)}
 User Message: "${cleanPrompt}"
 
 Formatting Instructions:
-- If the user asks a general knowledge or non-programming question (e.g., "who is the prime minister?"), just answer naturally in plain text and maybe add a sarcastic comment about why they are asking this in a code editor. DO NOT generate ANY code blocks for general knowledge questions.
-- If the user says a greeting, reply with a funny/sarcastic greeting. DO NOT generate code snippets for general greetings.
-- If explaining code or answering technical questions, roast their bugs playfully first, then structure your actual answer with headings (###), bold text (**bold**), and clear numbered/bullet points.
+- If the user asks a general knowledge or non-programming question, just answer naturally and concisely in plain text. DO NOT generate ANY code blocks for general knowledge questions.
+- If the user says a greeting, reply politely. DO NOT generate code snippets for general greetings.
+- If explaining code or answering technical questions, be direct and professional, structuring your answer with headings (###), bold text (**bold**), and clear numbered/bullet points.
 - ONLY generate code blocks (\`\`\`language ... \`\`\`) if the user explicitly asks for code, programming, debugging, refactoring, or a code example.`;
 
         const result = await model.generateContent(systemPrompt);
@@ -74,14 +73,27 @@ Formatting Instructions:
         });
       } catch (err) {
         console.warn(`Model ${modelName} error:`, err.message);
+        lastError = err;
       }
+    }
+    
+    // If we tried all models and failed due to API Key issues
+    if (lastError && lastError.message.includes("401 Unauthorized")) {
+      return res.json({
+        reply: `⚠️ **API Key Error!**\n\nI tried to connect to Google Gemini, but your API Key is invalid or expired. Google rejected it with a "401 Unauthorized" error.\n\nPlease go to [Google AI Studio](https://aistudio.google.com/app/apikey), generate a new API key, put it in your \`.env\` file, and restart the server!`,
+        codeSnippet: null,
+        languageTag: null,
+        status: "success",
+        engine: "CodeSphere Intelligent Chatbot Engine",
+        timestamp: new Date().toISOString()
+      });
     }
   }
 
   // 2. INTELLIGENT CHATBOT FALLBACK ENGINE (NATURAL CHATGPT/GEMINI BEHAVIOR)
 
   // A. GREETINGS & CONVERSATIONAL PROMPTS (No code snippet box!)
-  const greetings = ["hello", "hi", "hey", "namaste", "good morning", "good evening", "how are you", "who are you", "what can you do", "help"];
+  const greetings = ["hello", "hi", "hii", "hey", "namaste", "good morning", "good evening", "how are you", "who are you", "what can you do", "help"];
   const isGreeting = greetings.some(g => lowerPrompt === g || lowerPrompt.startsWith(g + " ") || lowerPrompt.endsWith(" " + g));
 
   if (isGreeting) {

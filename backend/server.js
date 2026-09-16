@@ -3,9 +3,11 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import os from "os";
+import fs from "fs";
+import path from "path";
 import pty from "node-pty";
 
-import projectsRouter from "./routes/projects.js";
+import projectsRouter, { getProjectByName } from "./routes/projects.js";
 import executeRouter from "./routes/execute.js";
 import aiRouter from "./routes/ai.js";
 
@@ -23,17 +25,8 @@ app.use(express.json({ limit: "10mb" }));
 
 // Request logger
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.url}`);
   next();
-});
-
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "VS Code Editor Backend Server is running smoothly",
-    timestamp: new Date().toISOString()
-  });
 });
 
 // Routes
@@ -41,14 +34,14 @@ app.use("/api/projects", projectsRouter);
 app.use("/api/execute", executeRouter);
 app.use("/api/ai", aiRouter);
 
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({ error: "Endpoint not found" });
+// Basic Health Check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
 });
 
-// Error handler
+// --- Global Error Handler ---
 app.use((err, req, res, next) => {
-  console.error("Unhandled Server Error:", err);
+  console.error("Global Error Handler caught:", err);
   res.status(500).json({ error: "Internal Server Error", details: err.message });
 });
 
@@ -65,14 +58,27 @@ const io = new Server(server, {
 // Determine the default shell for the OS
 const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   console.log("Client connected to terminal socket");
   
+  const projectName = socket.handshake.query.project || "";
+  const project = await getProjectByName(projectName);
+  
+  let workspaceDir = project?.customPath || path.join(os.homedir(), "CodeSphere_Workspace");
+  
+  if (!project?.customPath && projectName) {
+    workspaceDir = path.join(workspaceDir, projectName);
+  }
+
+  if (!fs.existsSync(workspaceDir)) {
+    fs.mkdirSync(workspaceDir, { recursive: true });
+  }
+
   const shellProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',
     cols: 80,
     rows: 30,
-    cwd: process.env.HOME || process.cwd(),
+    cwd: workspaceDir,
     env: process.env
   });
 
@@ -99,5 +105,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 VS Code Clone Backend Server running at http://localhost:${PORT}`);
+  console.log(`🚀 CodeSphere Backend Server running at http://localhost:${PORT}`);
 });
