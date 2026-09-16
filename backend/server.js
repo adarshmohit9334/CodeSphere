@@ -63,44 +63,31 @@ const io = new Server(server, {
 });
 
 // Determine the default shell for the OS
-const shell = os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash';
+const shell = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/zsh');
 
 io.on("connection", (socket) => {
   console.log("Client connected to terminal socket");
   
-  // Fallback to child_process.spawn since node-pty fails in this sandbox
-  const shellProcess = spawn(shell, ['-i'], {
+  const shellProcess = pty.spawn(shell, [], {
+    name: 'xterm-256color',
+    cols: 80,
+    rows: 30,
     cwd: process.env.HOME || process.cwd(),
-    env: { ...process.env, TERM: "xterm-256color", FORCE_COLOR: "1" },
-    stdio: ['pipe', 'pipe', 'pipe']
+    env: process.env
   });
 
-  shellProcess.stdout.on('data', (data) => {
-    // Replace newlines with CRLF for xterm.js
-    const output = data.toString().replace(/\n/g, '\r\n');
-    socket.emit("terminal:data", output);
-  });
-
-  shellProcess.stderr.on('data', (data) => {
-    const output = data.toString().replace(/\n/g, '\r\n');
-    socket.emit("terminal:data", output);
+  shellProcess.onData((data) => {
+    socket.emit("terminal:data", data);
   });
 
   socket.on("terminal:write", (data) => {
-    shellProcess.stdin.write(data);
-    
-    // Manual local echo since we are not using a real PTY
-    if (data === '\r') {
-      socket.emit("terminal:data", '\r\n');
-    } else if (data === '\x7f') {
-      socket.emit("terminal:data", '\b \b'); // backspace
-    } else {
-      socket.emit("terminal:data", data);
-    }
+    shellProcess.write(data);
   });
 
   socket.on("terminal:resize", ({ cols, rows }) => {
-    // No-op for standard pipes
+    try {
+      shellProcess.resize(cols, rows);
+    } catch (e) {}
   });
 
   socket.on("disconnect", () => {
