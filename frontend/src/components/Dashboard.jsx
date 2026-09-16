@@ -45,7 +45,8 @@ function Dashboard({
   onSignOut = null,
   editorSettings = { fontSize: 14, tabSize: 2, autoSave: true, minimap: true },
   onUpdateEditorSettings = () => {},
-  onUpdateUser = () => {}
+  onUpdateUser = () => {},
+  runHistory = []
 }) {
   const safeProjects = Array.isArray(projects) ? projects : [];
   const safeFiles = Array.isArray(files) ? files : [];
@@ -236,12 +237,7 @@ function Dashboard({
     alert("Profile details updated successfully!");
   };
 
-  const runHistory = [
-    { id: 1, file: "App.jsx", status: "Success", timestamp: "2 mins ago", output: "Hello from CodeSphere!" },
-    { id: 2, file: "main.jsx", status: "Success", timestamp: "15 mins ago", output: "React root mounted successfully" },
-    { id: 3, file: "index.css", status: "Success", timestamp: "1 hour ago", output: "Styles reloaded" },
-    { id: 4, file: "App.jsx", status: "Warning", timestamp: "3 hours ago", output: "Console warning interceptor active" }
-  ];
+  // runHistory is now provided via props
 
   const formatTimer = (secs) => {
     const h = Math.floor(secs / 3600);

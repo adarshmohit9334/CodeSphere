@@ -254,7 +254,32 @@ function App() {
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [bottomTab, setBottomTab] = useState("terminal"); // 'output' | 'terminal'
   const [bottomPanelHeight, setBottomPanelHeight] = useState(300);
+  const [rightPanelWidth, setRightPanelWidth] = useState(360);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Run History tracking
+  const [runHistory, setRunHistory] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("codesphere_run_history")) || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addRunHistory = useCallback((file, status, output) => {
+    const newItem = {
+      id: Date.now(),
+      file,
+      status,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      output: output && output.length > 80 ? output.substring(0, 80) + "..." : (output || "No output")
+    };
+    setRunHistory(prev => {
+      const updated = [newItem, ...prev].slice(0, 50); // Keep last 50
+      localStorage.setItem("codesphere_run_history", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const startResizing = (mouseDownEvent) => {
     mouseDownEvent.preventDefault();
@@ -266,6 +291,30 @@ function App() {
       const deltaY = startY - mouseMoveEvent.clientY;
       const newHeight = Math.max(100, Math.min(window.innerHeight * 0.8, startHeight + deltaY));
       setBottomPanelHeight(newHeight);
+      
+      // Dispatch custom resize event so xterm can recalculate fit
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const startHorizontalResizing = (mouseDownEvent) => {
+    mouseDownEvent.preventDefault();
+    const startX = mouseDownEvent.clientX;
+    const startWidth = rightPanelWidth;
+
+    const onMouseMove = (mouseMoveEvent) => {
+      // Calculate new width: dragging left increases width, dragging right decreases
+      const deltaX = startX - mouseMoveEvent.clientX;
+      const newWidth = Math.max(250, Math.min(window.innerWidth * 0.7, startWidth + deltaX));
+      setRightPanelWidth(newWidth);
       
       // Dispatch custom resize event so xterm can recalculate fit
       window.dispatchEvent(new Event('resize'));
@@ -479,6 +528,7 @@ function App() {
     // Web languages run in Preview iframe
     if (["javascript", "html", "css", "typescript"].includes(lang) && (selectedFile.endsWith('.jsx') || selectedFile.endsWith('.js') || selectedFile.endsWith('.html'))) {
       setRunCode((prev) => prev + 1);
+      addRunHistory(selectedFile, "Success", "Browser preview refreshed");
     } else {
       // Backend Execution for Python, Java, C, C++, raw JS, etc.
       setBottomTab("output");
@@ -492,15 +542,18 @@ function App() {
       .then(data => {
          if (data.success) {
            setOutput(data.output || "Program finished with no output.");
+           addRunHistory(selectedFile, "Success", data.output || "Program finished successfully");
          } else {
            setOutput(`Error:\n${data.output || data.errors.join('\\n')}`);
+           addRunHistory(selectedFile, "Error", data.output || data.errors.join(' '));
          }
       })
       .catch(err => {
          setOutput(`Network Error: ${err.message}`);
+         addRunHistory(selectedFile, "Error", `Network Error: ${err.message}`);
       });
     }
-  }, [files, selectedFile]);
+  }, [files, selectedFile, addRunHistory]);
 
   // Export Project
   const handleExportProject = () => {
@@ -771,7 +824,9 @@ function App() {
             onSignOut={handleSignOut}
             editorSettings={editorSettings}
             onUpdateEditorSettings={handleUpdateEditorSettings}
+            onUpdateEditorSettings={handleUpdateEditorSettings}
             onUpdateUser={handleUpdateUser}
+            runHistory={runHistory}
           />
         </ErrorBoundary>
       ) : (
@@ -846,8 +901,23 @@ function App() {
             tabSize={editorSettings.tabSize}
           />
 
+          {/* HORIZONTAL DRAG HANDLE */}
+          <div 
+            onMouseDown={startHorizontalResizing}
+            style={{
+              width: '4px',
+              cursor: 'col-resize',
+              backgroundColor: '#30363d',
+              height: '100%',
+              zIndex: 10,
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
+          />
+
           {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
-          <div className="right-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="right-panel" style={{ width: `${rightPanelWidth}px`, minWidth: '250px', display: 'flex', flexDirection: 'column' }}>
             {showPreview && (
               <div style={{ flex: 1, minHeight: 0 }}>
                 <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
