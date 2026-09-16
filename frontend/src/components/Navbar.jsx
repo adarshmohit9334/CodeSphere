@@ -43,10 +43,10 @@ function Navbar({
     setShowProjects(false);
   };
 
-  const themesList = [
-    { id: "vs-dark", name: "VS Code Dark+" },
-    { id: "vs-light", name: "VS Code Light+" },
-    { id: "hc-black", name: "High Contrast Dark" }
+  const themes = [
+    { id: "vs-dark", name: "CodeSphere Dark" },
+    { id: "vs-light", name: "CodeSphere Light" },
+    { id: "hc-black", name: "High Contrast" }
   ];
 
   return (

@@ -4,7 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { io } from "socket.io-client";
 import "@xterm/xterm/css/xterm.css";
 
-export default function TerminalPanel() {
+export default function TerminalPanel({ currentProject }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const socketRef = useRef(null);
@@ -40,7 +40,9 @@ export default function TerminalPanel() {
       ? 'http://localhost:5000' 
       : `http://${window.location.hostname}:5000`;
     
-    const socket = io(API_BASE); 
+    const socket = io(API_BASE, { 
+      query: { project: currentProject || '' } 
+    }); 
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -71,12 +73,20 @@ export default function TerminalPanel() {
     // Initial resize sync after connection
     setTimeout(handleResize, 200);
 
+    // Handle programmatic command execution
+    const handleRunCommand = (e) => {
+      const command = e.detail;
+      socket.emit("terminal:write", command + "\r");
+    };
+    window.addEventListener("terminal:run-command", handleRunCommand);
+
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("terminal:run-command", handleRunCommand);
       socket.disconnect();
       term.dispose();
     };
-  }, []);
+  }, [currentProject]);
 
   return (
     <div 

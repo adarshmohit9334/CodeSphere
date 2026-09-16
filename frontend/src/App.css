@@ -477,7 +477,9 @@ body,
 
 .ai-assistant-panel {
   width: 320px;
-  min-width: 320px;
+  min-width: 280px;
+  max-width: 600px;
+  resize: horizontal;
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
@@ -800,7 +802,9 @@ body,
 .sidebar,
 .search-panel {
   width: 250px;
-  min-width: 250px;
+  min-width: 200px;
+  max-width: 600px;
+  resize: horizontal;
   height: 100%;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
@@ -810,7 +814,8 @@ body,
   flex-direction: column;
 }
 
-.vscode-explorer {
+/* EXPLORER / SIDEBAR OVERRIDES */
+.codesphere-explorer {
   padding: 4px 0;
 }
 

@@ -15,6 +15,7 @@ import SignIn from "./components/SignIn";
 import AiAssistantPanel from "./components/AiAssistantPanel";
 import InputDialogModal from "./components/InputDialogModal";
 import TerminalPanel from "./components/TerminalPanel";
+import CreateProjectModal from "./components/CreateProjectModal";
 
 import "./App.css";
 
@@ -291,7 +292,7 @@ function App() {
       const deltaY = startY - mouseMoveEvent.clientY;
       const newHeight = Math.max(100, Math.min(window.innerHeight * 0.8, startHeight + deltaY));
       setBottomPanelHeight(newHeight);
-      
+
       // Dispatch custom resize event so xterm can recalculate fit
       window.dispatchEvent(new Event('resize'));
     };
@@ -315,7 +316,7 @@ function App() {
       const deltaX = startX - mouseMoveEvent.clientX;
       const newWidth = Math.max(250, Math.min(window.innerWidth * 0.7, startWidth + deltaX));
       setRightPanelWidth(newWidth);
-      
+
       // Dispatch custom resize event so xterm can recalculate fit
       window.dispatchEvent(new Event('resize'));
     };
@@ -404,6 +405,8 @@ function App() {
     onSubmit: () => { }
   });
 
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+
   const openInputModal = (title, placeholder, defaultValue, onSubmit, isConfirm = false, confirmText = "") => {
     setInputModal({
       isOpen: true,
@@ -420,38 +423,40 @@ function App() {
     setInputModal((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Create Project
-  const handleCreateProject = () => {
-    openInputModal(
-      "➕ Create New Project",
-      "Enter project name (e.g. Portfolio App)",
-      "",
-      (projectName) => {
-        if (projects.some((p) => p.toLowerCase() === projectName.toLowerCase())) {
-          alert("A project with this name already exists!");
-          return;
-        }
+  const handleCreateProjectClick = () => {
+    setIsCreateProjectModalOpen(true);
+  };
 
-        const newProjectFiles = defaultFiles.map((file) => ({ ...file }));
-        setProjects((prev) => [...prev, projectName]);
-        setCurrentProject(projectName);
-        setFiles(newProjectFiles);
-        setOpenFiles(["App.jsx"]);
-        setSelectedFile("App.jsx");
-        setCode(newProjectFiles[0].code);
-        setDirtyFiles([]);
-        setOutput(`✅ New project created: ${projectName}`);
+  const handleCreateProject = handleCreateProjectClick;
 
-        // Push to backend if connected
-        if (backendStatus) {
-          fetch(`${API_BASE}/projects`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: projectName, files: newProjectFiles })
-          }).catch((err) => console.warn("Backend sync failed:", err));
-        }
-      }
-    );
+  const handleCreateProjectSubmit = (projectName, customPath) => {
+    if (projects.some((p) => p.toLowerCase() === projectName.toLowerCase())) {
+      alert("A project with this name already exists!");
+      return;
+    }
+
+    const newProjectFiles = defaultFiles.map((file) => ({ ...file }));
+    setProjects((prev) => [...prev, projectName]);
+    setCurrentProject(projectName);
+    setFiles(newProjectFiles);
+    setOpenFiles(["App.jsx"]);
+    setSelectedFile("App.jsx");
+    setCode(newProjectFiles[0].code);
+    setDirtyFiles([]);
+    setOutput(`✅ New project created: ${projectName}`);
+
+    // Push to backend if connected
+    if (backendStatus) {
+      fetch(`${API_BASE}/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: projectName,
+          files: newProjectFiles,
+          customPath: customPath || undefined
+        })
+      }).catch((err) => console.warn("Backend create failed:", err));
+    }
   };
 
   // Rename Project
@@ -519,41 +524,36 @@ function App() {
 
   // Run Code
   const handleRunCode = useCallback(() => {
+    handleSaveCode(); // Ensure latest file changes are synced to backend before running
     setOutput("");
     const selectedData = files.find(f => f.name === selectedFile);
     if (!selectedData) return;
 
     const lang = selectedData.language;
-    
+
     // Web languages run in Preview iframe
     if (["javascript", "html", "css", "typescript"].includes(lang) && (selectedFile.endsWith('.jsx') || selectedFile.endsWith('.js') || selectedFile.endsWith('.html'))) {
       setRunCode((prev) => prev + 1);
       addRunHistory(selectedFile, "Success", "Browser preview refreshed");
     } else {
       // Backend Execution for Python, Java, C, C++, raw JS, etc.
-      setBottomTab("output");
-      setOutput("Running code...\n");
-      fetch(`${API_BASE}/execute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: selectedData.code, language: lang })
-      })
-      .then(res => res.json())
-      .then(data => {
-         if (data.success) {
-           setOutput(data.output || "Program finished with no output.");
-           addRunHistory(selectedFile, "Success", data.output || "Program finished successfully");
-         } else {
-           setOutput(`Error:\n${data.output || data.errors.join('\\n')}`);
-           addRunHistory(selectedFile, "Error", data.output || data.errors.join(' '));
-         }
-      })
-      .catch(err => {
-         setOutput(`Network Error: ${err.message}`);
-         addRunHistory(selectedFile, "Error", `Network Error: ${err.message}`);
-      });
+      setBottomTab("terminal");
+      
+      let command = "";
+      if (lang === "python") command = `python3 ${selectedFile}`;
+      else if (lang === "java") command = `javac ${selectedFile} && java ${selectedFile.replace('.java', '')}`;
+      else if (lang === "c") command = `gcc ${selectedFile} -o a.out && ./a.out`;
+      else if (lang === "cpp") command = `g++ ${selectedFile} -o a.out && ./a.out`;
+      else if (lang === "javascript" || lang === "typescript") command = `node ${selectedFile}`;
+      else command = `cat ${selectedFile}`;
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('terminal:run-command', { detail: command }));
+      }, 300);
+      
+      addRunHistory(selectedFile, "Success", "Sent command to interactive terminal");
     }
-  }, [files, selectedFile, addRunHistory]);
+  }, [files, selectedFile, addRunHistory, handleSaveCode]);
 
   // Export Project
   const handleExportProject = () => {
@@ -902,7 +902,7 @@ function App() {
           />
 
           {/* HORIZONTAL DRAG HANDLE */}
-          <div 
+          <div
             onMouseDown={startHorizontalResizing}
             style={{
               width: '4px',
@@ -923,10 +923,10 @@ function App() {
                 <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
               </div>
             )}
-            
+
             {/* DRAG HANDLE FOR RESIZING BOTTOM PANEL */}
             {showPreview && (
-              <div 
+              <div
                 onMouseDown={startResizing}
                 style={{
                   height: '4px',
@@ -942,13 +942,13 @@ function App() {
 
             <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: showPreview ? `${bottomPanelHeight}px` : '100%', flex: showPreview ? 'none' : 1, minHeight: '100px', backgroundColor: '#0d1117' }}>
               <div className="bottom-panel-tabs" style={{ display: 'flex', gap: '16px', padding: '8px 16px', borderBottom: '1px solid #30363d', backgroundColor: '#161b22', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <div 
+                <div
                   style={{ cursor: 'pointer', color: bottomTab === 'output' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'output' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
                   onClick={() => setBottomTab('output')}
                 >
                   Output
                 </div>
-                <div 
+                <div
                   style={{ cursor: 'pointer', color: bottomTab === 'terminal' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'terminal' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
                   onClick={() => setBottomTab('terminal')}
                 >
@@ -960,7 +960,7 @@ function App() {
                   <OutputPanel output={output} clearOutput={clearOutput} />
                 )}
                 {bottomTab === 'terminal' && (
-                  <TerminalPanel />
+                  <TerminalPanel currentProject={currentProject} />
                 )}
               </div>
             </div>
@@ -977,8 +977,13 @@ function App() {
         theme={theme}
       />
 
-      {/* INPUT DIALOG MODAL (REPLACES BROWSER PROMPT) */}
+      {/* MODALS */}
       <InputDialogModal {...inputModal} onClose={closeInputModal} />
+      <CreateProjectModal
+        isOpen={isCreateProjectModalOpen}
+        onClose={() => setIsCreateProjectModalOpen(false)}
+        onSubmit={handleCreateProjectSubmit}
+      />
     </div>
   );
 }
