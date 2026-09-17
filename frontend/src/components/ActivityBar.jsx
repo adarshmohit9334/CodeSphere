@@ -1,4 +1,4 @@
-function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme, showAiPanel, toggleAiPanel }) {
+function ActivityBar({ activeTab, setActiveTab, backendStatus, onOpenSettings, showAiPanel, toggleAiPanel }) {
   return (
     <aside className="activity-bar">
       <div className="activity-top">
@@ -61,11 +61,11 @@ function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme, sh
           <span className="dot"></span>
         </div>
 
-        {/* SETTINGS / THEME ICON */}
+        {/* SETTINGS ICON */}
         <button
           className="activity-icon"
-          onClick={onToggleTheme}
-          title="Change Editor Theme"
+          onClick={onOpenSettings}
+          title="Open Settings"
         >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8">
             <circle cx="12" cy="12" r="3" />

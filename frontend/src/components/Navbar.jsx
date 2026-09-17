@@ -127,25 +127,9 @@ function Navbar({
           </span>
         </div>
 
-        {/* TOP NAVIGATION TABS */}
-        <div className="view-switch-tabs">
-          <button
-            className={`view-tab-btn ${viewMode === "dashboard" ? "active" : ""}`}
-            onClick={() => setViewMode("dashboard")}
-          >
-            📊 Dashboard
-          </button>
-          <button
-            className={`view-tab-btn ${viewMode === "editor" ? "active" : ""}`}
-            onClick={() => setViewMode("editor")}
-          >
-            💻 Editor
-          </button>
         </div>
-      </div>
 
-      {/* NAVBAR ACTIONS - ONLY SHOWN IN EDITOR VIEW */}
-      {viewMode === "editor" && (
+        {/* NAVBAR ACTIONS */}
         <div className="navbar-actions">
           {/* MY PROJECTS DROPDOWN */}
           <div className="projects-wrapper" ref={projectsRef}>
@@ -265,8 +249,6 @@ function Navbar({
             </button>
           )}
         </div>
-      )}
-
       {/* SHORTCUTS MODAL */}
       {showShortcutsModal && (
         <div className="modal-backdrop" onClick={() => setShowShortcutsModal(false)}>

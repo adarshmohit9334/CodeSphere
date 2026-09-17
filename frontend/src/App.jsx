@@ -10,7 +10,7 @@ import Preview from "./components/Preview";
 import OutputPanel from "./components/OutputPanel";
 import StatusBar from "./components/StatusBar";
 
-import Dashboard from "./components/Dashboard";
+import SettingsModal from "./components/SettingsModal";
 import SignIn from "./components/SignIn";
 import AiAssistantPanel from "./components/AiAssistantPanel";
 import InputDialogModal from "./components/InputDialogModal";
@@ -404,6 +404,7 @@ function App() {
   const [inputModal, setInputModal] = useState({ isOpen: false, title: "", placeholder: "", defaultValue: "", onSubmit: null, isDestructive: false, description: "" });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
   const [isGitCloneModalOpen, setIsGitCloneModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const openInputModal = (title, placeholder, defaultValue, onSubmit, isConfirm = false, confirmText = "") => {
     setInputModal({
@@ -964,76 +965,49 @@ function App() {
         onSignOut={handleSignOut}
       />
 
-      {viewMode === "dashboard" ? (
-        <ErrorBoundary>
-          <Dashboard
-            projects={projects || []}
-            files={files || []}
-            currentProject={currentProject || "My React Project"}
-            onSelectProject={handleProjectSelect}
-            onCreateProject={handleCreateProject}
-            onRenameProject={handleRenameProject}
-            onDeleteProject={handleDeleteProject}
-            onViewEditor={() => setViewMode("editor")}
-            backendStatus={backendStatus}
-            theme={theme}
-            setTheme={setTheme}
-            runCount={runCode}
-            user={user}
-            onSignOut={handleSignOut}
-            editorSettings={editorSettings}
-            onUpdateEditorSettings={handleUpdateEditorSettings}
-            onUpdateEditorSettings={handleUpdateEditorSettings}
-            onUpdateUser={handleUpdateUser}
-            runHistory={runHistory}
+      <div className="workspace">
+        {/* ACTIVITY BAR */}
+        <ActivityBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          backendStatus={backendStatus}
+          showAiPanel={showAiPanel}
+          toggleAiPanel={() => setShowAiPanel(prev => !prev)}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
+        />
+
+        {/* EXPLORER OR SEARCH PANEL */}
+        {activeTab === "explorer" && (
+          <Sidebar
+            files={files}
+            selectedFile={selectedFile}
+            onFileSelect={handleFileSelect}
+            onCreateFile={handleCreateFile}
+            onCreateFolder={handleCreateFolder}
+            onDeleteFile={handleDeleteFile}
+            onRenameFile={handleRenameFile}
+            currentProject={currentProject}
+            onOpenProject={() => setViewMode("dashboard")}
           />
-        </ErrorBoundary>
-      ) : (
-        <div className="workspace">
-          {/* ACTIVITY BAR */}
-          <ActivityBar
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            backendStatus={backendStatus}
-            showAiPanel={showAiPanel}
-            toggleAiPanel={() => setShowAiPanel(prev => !prev)}
-            onToggleTheme={() =>
-              setTheme((prev) => (prev === "vs-dark" ? "vs-light" : prev === "vs-light" ? "hc-black" : "vs-dark"))
-            }
-          />
+        )}
 
-          {/* EXPLORER OR SEARCH PANEL */}
-          {activeTab === "explorer" && (
-            <Sidebar
-              files={files}
-              selectedFile={selectedFile}
-              onFileSelect={handleFileSelect}
-              onCreateFile={handleCreateFile}
-              onCreateFolder={handleCreateFolder}
-              onDeleteFile={handleDeleteFile}
-              onRenameFile={handleRenameFile}
-              currentProject={currentProject}
-              onOpenProject={() => setViewMode("dashboard")}
-            />
-          )}
+        {activeTab === "search" && (
+          <SearchPanel files={files} onFileSelect={handleFileSelect} />
+        )}
 
-          {activeTab === "search" && (
-            <SearchPanel files={files} onFileSelect={handleFileSelect} />
-          )}
-
-          {activeTab === "debug" && (
-            <aside className="sidebar debug-panel">
-              <h3>RUN & DEBUG</h3>
-              <div className="debug-content">
-                <button className="run-button debug-run" onClick={handleRunCode}>
-                  ▶ Start Debugging
-                </button>
-                <p className="debug-info">
-                  Preview console and error log capture are actively monitoring execution.
-                </p>
-              </div>
-            </aside>
-          )}
+        {activeTab === "debug" && (
+          <aside className="sidebar debug-panel">
+            <h3>RUN & DEBUG</h3>
+            <div className="debug-content">
+              <button className="run-button debug-run" onClick={handleRunCode}>
+                ▶ Start Debugging
+              </button>
+              <p className="debug-info">
+                Preview console and error log capture are actively monitoring execution.
+              </p>
+            </div>
+          </aside>
+        )}
 
           <div className="workspace-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <div className="workspace-top" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -1151,8 +1125,18 @@ function App() {
             </div>
           )}
         </div>
-      )}
 
+        {/* SETTINGS MODAL */}
+        <SettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          user={user}
+          onLogout={handleSignOut}
+          theme={theme}
+          onToggleTheme={() =>
+            setTheme((prev) => (prev === "vs-dark" ? "vs-light" : prev === "vs-light" ? "hc-black" : "vs-dark"))
+          }
+        />
       {/* STATUS BAR */}
       <StatusBar
         cursorPosition={cursorPosition}
