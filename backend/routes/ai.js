@@ -32,20 +32,27 @@ router.post("/chat", async (req, res) => {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
 
-        const systemPrompt = `You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.
-You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.
+        const systemPrompt = `You are an elite, Antigravity-level agentic AI coding assistant built for CodeSphere.
+You are pair programming with a USER. You have full context of their workspace.
 
-Context Info:
-- Active File: "${fileName}"
-- Code in Active Editor:
-\`\`\`
-${codeContext.slice(0, 3000)}
-\`\`\`
+If the user asks you to modify code, fix bugs, or create a project, you MUST output a JSON block wrapped in \`\`\`json ... \`\`\` containing an array of actions. You can perform multiple actions in a single response.
 
-Formatting Instructions:
-- Be direct, professional, and concise.
-- ONLY generate code blocks (\`\`\`language ... \`\`\`) if the user explicitly asks for code, programming, debugging, refactoring, or a code example.
-- Do not wrap the entire response in a code block.`;
+Workspace Context:
+- Active File: ${fileName}
+- Active File Code: \n${codeContext}\n
+- Project Files: \n${req.body.projectFiles ? JSON.stringify(req.body.projectFiles) : "No other files"}\n
+
+Action Formats:
+1. Create Project:
+{ "action": "CREATE_PROJECT", "name": "Project Name", "files": [ { "path": "src/index.js", "content": "..." } ] }
+
+2. Create/Update File (Use this to edit ANY file in the workspace context):
+{ "action": "UPDATE_FILE", "path": "src/App.jsx", "content": "..." }
+
+3. Chat Message (Send explanations or status updates to the user):
+{ "action": "MESSAGE", "content": "I have updated the files." }
+
+CRITICAL RULE: If you output JSON actions, do NOT output any conversational text outside the JSON block. Your entire response should be the JSON block. Do not output anything else.`;
 
         let fullPrompt = systemPrompt + "\n\nChat History:\n";
         (chatHistory || []).slice(-6).forEach(msg => {
@@ -76,22 +83,27 @@ Formatting Instructions:
         const result = await model.generateContent([fullPrompt, ...imageParts]);
         const responseText = result.response.text();
 
-        let codeSnippet = null;
-        let languageTag = "code";
+        let actions = [];
 
-        // Extract code block ONLY if present in AI response
-        const codeMatch = responseText.match(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/);
-        if (codeMatch && codeMatch[2]) {
-          languageTag = codeMatch[1].trim() || "code";
-          codeSnippet = codeMatch[2].trim();
+        // Try to parse JSON actions block
+        const jsonMatch = responseText.match(/```json\n([\s\S]*?)```/);
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            actions = JSON.parse(jsonMatch[1].trim());
+          } catch (e) {
+            console.error("Failed to parse JSON from AI response", e);
+            actions = [{ action: "MESSAGE", content: responseText }];
+          }
+        } else {
+          // Fallback if AI just replies with text (or old format)
+          actions = [{ action: "MESSAGE", content: responseText }];
         }
 
         return res.json({
-          reply: responseText,
-          codeSnippet,
-          languageTag,
+          reply: responseText, // keep for backward compatibility
+          actions: actions,
           status: "success",
-          engine: `Google ${modelName} (Real AI)`,
+          engine: `Google ${modelName} (Agentic)`,
           timestamp: new Date().toISOString()
         });
       } catch (err) {
@@ -170,9 +182,22 @@ Formatting Instructions:
 
   if (isCodingRequest) {
     return res.json({
-      reply: `### 🤖 Solution for \`${fileName}\`:\n\nHere is the implementation as requested:`,
-      codeSnippet: `// Solution for: ${cleanPrompt}\nfunction Solution() {\n  console.log("Executing prompt action: ${cleanPrompt.replace(/"/g, "'")}");\n}\n\nexport default Solution;`,
-      languageTag: "javascript",
+      reply: "",
+      actions: [
+        {
+          action: "CREATE_PROJECT",
+          name: "Offline Generated Project",
+          files: [
+            { path: "index.html", content: "<h1>Hello from Offline AI</h1>" },
+            { path: "script.js", content: "console.log('Offline mode working');" },
+            { path: "style.css", content: "body { background: #222; color: #fff; }" }
+          ]
+        },
+        {
+          action: "MESSAGE",
+          content: "⚠️ The Gemini API is currently offline or returning 503 Service Unavailable. However, to show you that the **Agentic Workspace** works, I have generated this simulated project for you!"
+        }
+      ],
       status: "success",
       engine: "Antigravity Engine (Offline Mode)",
       timestamp: new Date().toISOString()

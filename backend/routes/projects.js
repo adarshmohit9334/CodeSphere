@@ -116,6 +116,93 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// POST /api/projects/clone - Clone a Git repo
+router.post("/clone", async (req, res) => {
+  try {
+    const { gitUrl } = req.body;
+    if (!gitUrl || typeof gitUrl !== "string") {
+      return res.status(400).json({ error: "Git URL is required" });
+    }
+
+    // Extract repo name from URL (e.g., https://github.com/user/repo.git -> repo)
+    let repoName = gitUrl.split('/').pop().replace(/\.git$/, '');
+    if (!repoName) repoName = `repo-${Date.now()}`;
+
+    // Ensure it doesn't already exist in DB
+    const [existing] = await pool.query('SELECT id FROM projects WHERE LOWER(name) = ?', [repoName.toLowerCase()]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "A project with this name already exists" });
+    }
+
+    const projectDir = path.join(WORKSPACE_DIR, repoName);
+    
+    // Remove if exists locally just in case
+    if (fs.existsSync(projectDir)) {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
+
+    // Clone
+    execSync(`git clone ${gitUrl} ${repoName}`, { cwd: WORKSPACE_DIR, stdio: 'ignore' });
+
+    // Read cloned files
+    function readDirRecursive(dir, baseDir = dir) {
+      let results = [];
+      const list = fs.readdirSync(dir);
+      for (const file of list) {
+        if (file === '.git' || file === 'node_modules' || file === 'dist' || file === 'build') continue;
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        if (stat && stat.isDirectory()) {
+          results = results.concat(readDirRecursive(filePath, baseDir));
+        } else {
+          const relPath = path.relative(baseDir, filePath).replace(/\\/g, '/');
+          const ext = path.extname(file).toLowerCase();
+          const textExts = ['.js', '.jsx', '.ts', '.tsx', '.json', '.html', '.css', '.md', '.txt', '.py', '.java', '.cpp', '.c'];
+          
+          if (textExts.includes(ext) || !ext) {
+            try {
+               const content = fs.readFileSync(filePath, 'utf-8');
+               let lang = 'text';
+               if (['.js', '.jsx'].includes(ext)) lang = 'javascript';
+               if (['.ts', '.tsx'].includes(ext)) lang = 'typescript';
+               if (ext === '.css') lang = 'css';
+               if (ext === '.html') lang = 'html';
+               if (ext === '.json') lang = 'json';
+               if (ext === '.py') lang = 'python';
+               if (ext === '.md') lang = 'markdown';
+               results.push({ name: relPath, language: lang, code: content });
+            } catch (e) {
+               console.warn(`Failed to read file ${filePath}`);
+            }
+          }
+        }
+      }
+      return results;
+    }
+
+    const clonedFiles = readDirRecursive(projectDir);
+
+    const newProject = {
+      id: `proj-${Date.now()}`,
+      name: repoName,
+      customPath: null,
+      type: "Git Clone",
+      updatedAt: getSqlDate(),
+      files: JSON.stringify(clonedFiles.length > 0 ? clonedFiles : [{ name: "README.md", language: "markdown", code: "# " + repoName }])
+    };
+
+    await pool.query(
+      'INSERT INTO projects (id, name, type, files, customPath, updatedAt) VALUES (?, ?, ?, ?, ?, ?)',
+      [newProject.id, newProject.name, newProject.type, newProject.files, newProject.customPath, newProject.updatedAt]
+    );
+
+    res.status(201).json(newProject);
+  } catch (err) {
+    console.error("Git Clone error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/projects - Create new project
 router.post("/", async (req, res) => {
   try {
