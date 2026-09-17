@@ -1,4 +1,4 @@
-function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme }) {
+function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme, showAiPanel, toggleAiPanel }) {
   return (
     <aside className="activity-bar">
       <div className="activity-top">
@@ -38,8 +38,8 @@ function ActivityBar({ activeTab, setActiveTab, backendStatus, onToggleTheme }) 
 
         {/* AI ASSISTANT ICON */}
         <button
-          className={`activity-icon ai-activity-icon ${activeTab === "ai" ? "active" : ""}`}
-          onClick={() => setActiveTab("ai")}
+          className={`activity-icon ai-activity-icon ${showAiPanel ? "active" : ""}`}
+          onClick={toggleAiPanel}
           title="CodeSphere AI Assistant"
         >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8">

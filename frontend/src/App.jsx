@@ -17,6 +17,7 @@ import InputDialogModal from "./components/InputDialogModal";
 import TerminalPanel from "./components/TerminalPanel";
 import CreateProjectModal from "./components/CreateProjectModal";
 
+// Reusing InputDialogModal for Git Clone since it just takes a string
 import "./App.css";
 
 class ErrorBoundary extends Component {
@@ -88,7 +89,7 @@ function App() {
   const [viewMode, setViewMode] = useState(() => {
     const savedUser = localStorage.getItem("codesphere_user");
     if (!savedUser) return "signin";
-    return localStorage.getItem("codesphere_view_mode") || "dashboard"; // 'signin' | 'editor' | 'dashboard'
+    return localStorage.getItem("codesphere_view_mode") || "editor";
   });
 
   useEffect(() => {
@@ -120,8 +121,9 @@ function App() {
     localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(userObj));
 
     setUser(userObj);
-    const savedMode = localStorage.getItem("codesphere_view_mode");
-    setViewMode(savedMode || "dashboard");
+    // User requested that after login, it should always go to Welcome Page (editor mode) by default
+    setViewMode("editor");
+    localStorage.setItem("codesphere_view_mode", "editor");
   };
 
   // Real Supabase Session Listener (Google SSO Redirect & Auth Persistence)
@@ -143,7 +145,11 @@ function App() {
 
   const handleSignIn = (userObj) => {
     setUser(userObj);
-    setViewMode("dashboard");
+    setViewMode("editor");
+    // Ensure no file is open so Welcome Page shows on fresh login
+    setSelectedFile("");
+    setOpenFiles([]);
+    setCurrentProject(null);
   };
 
   const handleSignOut = async () => {
@@ -182,14 +188,16 @@ function App() {
     localStorage.setItem(`codesphere_user_${key}`, JSON.stringify(updatedUser));
   };
 
+  const userKey = user
+    ? (user.username || user.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_")
+    : "guest";
+
+
+
   // Save theme preference to LocalStorage
   useEffect(() => {
     localStorage.setItem("code-editor-theme", theme);
   }, [theme]);
-
-  const userKey = user
-    ? (user.username || user.email || "guest").toLowerCase().replace(/[^a-z0-9]/g, "_")
-    : "guest";
 
   const [backendStatus, setBackendStatus] = useState(false);
 
@@ -198,32 +206,15 @@ function App() {
     return saved ? JSON.parse(saved) : defaultProjects;
   });
 
-  const [currentProject, setCurrentProject] = useState(() => {
-    return localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
-  });
+  const [currentProject, setCurrentProject] = useState(null);
 
-  const [files, setFiles] = useState(() => {
-    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
-    const savedFiles = localStorage.getItem(`codesphere_${userKey}_files_${savedProject}`);
-    return savedFiles ? JSON.parse(savedFiles) : defaultFiles;
-  });
+  const [files, setFiles] = useState([]);
 
-  const [openFiles, setOpenFiles] = useState(() => {
-    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
-    const savedOpenFiles = localStorage.getItem(`codesphere_${userKey}_open_files_${savedProject}`);
-    return savedOpenFiles ? JSON.parse(savedOpenFiles) : ["App.jsx"];
-  });
+  const [openFiles, setOpenFiles] = useState([]);
 
-  const [selectedFile, setSelectedFile] = useState(() => {
-    const savedProject = localStorage.getItem(`codesphere_${userKey}_current_project`) || "My React Project";
-    const savedSelected = localStorage.getItem(`codesphere_${userKey}_selected_file_${savedProject}`);
-    return savedSelected || "App.jsx";
-  });
+  const [selectedFile, setSelectedFile] = useState("");
 
-  const [code, setCode] = useState(() => {
-    const selected = files.find((f) => f.name === selectedFile);
-    return selected ? selected.code : defaultFiles[0].code;
-  });
+  const [code, setCode] = useState("");
 
   // Re-sync workspace when active user account changes!
   useEffect(() => {
@@ -232,21 +223,12 @@ function App() {
     const userProjects = savedProjStr ? JSON.parse(savedProjStr) : [`${user?.name || "My"} React Workspace`, "Untitled Project"];
     setProjects(userProjects);
 
-    const savedCurProj = localStorage.getItem(`codesphere_${userKey}_current_project`) || userProjects[0];
-    setCurrentProject(savedCurProj);
-
-    const savedFilesStr = localStorage.getItem(`codesphere_${userKey}_files_${savedCurProj}`);
-    const userFiles = savedFilesStr ? JSON.parse(savedFilesStr) : defaultFiles;
-    setFiles(userFiles);
-
-    const savedOpenStr = localStorage.getItem(`codesphere_${userKey}_open_files_${savedCurProj}`);
-    setOpenFiles(savedOpenStr ? JSON.parse(savedOpenStr) : ["App.jsx"]);
-
-    const savedSelected = localStorage.getItem(`codesphere_${userKey}_selected_file_${savedCurProj}`) || "App.jsx";
-    setSelectedFile(savedSelected);
-
-    const activeObj = userFiles.find((f) => f.name === savedSelected);
-    setCode(activeObj ? activeObj.code : (userFiles[0]?.code || defaultFiles[0].code));
+    // ALWAYS start with no folder opened based on user request
+    setCurrentProject(null);
+    setFiles([]);
+    setOpenFiles([]);
+    setSelectedFile("");
+    setCode("");
   }, [userKey]);
 
   const [output, setOutput] = useState("");
@@ -257,6 +239,8 @@ function App() {
   const [bottomPanelHeight, setBottomPanelHeight] = useState(300);
   const [rightPanelWidth, setRightPanelWidth] = useState(360);
   const [showPreview, setShowPreview] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiPanelWidth, setAiPanelWidth] = useState(360);
 
   // Run History tracking
   const [runHistory, setRunHistory] = useState(() => {
@@ -281,6 +265,26 @@ function App() {
       return updated;
     });
   }, []);
+
+  const startHorizontalResizingAi = (mouseDownEvent) => {
+    mouseDownEvent.preventDefault();
+    const startX = mouseDownEvent.clientX;
+    const startWidth = aiPanelWidth;
+
+    const onMouseMove = (mouseMoveEvent) => {
+      const deltaX = startX - mouseMoveEvent.clientX;
+      const newWidth = Math.max(250, Math.min(window.innerWidth * 0.7, startWidth + deltaX));
+      setAiPanelWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
 
   const startResizing = (mouseDownEvent) => {
     mouseDownEvent.preventDefault();
@@ -397,15 +401,9 @@ function App() {
   };
 
   // Custom Input Modal State
-  const [inputModal, setInputModal] = useState({
-    isOpen: false,
-    title: "",
-    placeholder: "",
-    defaultValue: "",
-    onSubmit: () => { }
-  });
-
+  const [inputModal, setInputModal] = useState({ isOpen: false, title: "", placeholder: "", defaultValue: "", onSubmit: null, isDestructive: false, description: "" });
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+  const [isGitCloneModalOpen, setIsGitCloneModalOpen] = useState(false);
 
   const openInputModal = (title, placeholder, defaultValue, onSubmit, isConfirm = false, confirmText = "") => {
     setInputModal({
@@ -429,33 +427,113 @@ function App() {
 
   const handleCreateProject = handleCreateProjectClick;
 
-  const handleCreateProjectSubmit = (projectName, customPath) => {
-    if (projects.some((p) => p.toLowerCase() === projectName.toLowerCase())) {
-      alert("A project with this name already exists!");
+  const handleCreateProjectSubmit = async ({ name, type }) => {
+    if (projects.includes(name)) {
+      alert("A project with this name already exists locally.");
+      return;
+    }
+    const newFiles = getTemplateFiles(type);
+
+    // Save to DB if backend connected
+    if (backendStatus) {
+      try {
+        await fetch(`${API_BASE}/projects`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, type, files: newFiles })
+        });
+      } catch (err) {
+        console.error("Failed to save project to backend:", err);
+      }
+    }
+
+    const updatedProjects = [...projects, name];
+    setProjects(updatedProjects);
+    localStorage.setItem(`codesphere_${userKey}_projects`, JSON.stringify(updatedProjects));
+
+    setCurrentProject(name);
+    localStorage.setItem(`codesphere_${userKey}_current_project`, name);
+
+    setFiles(newFiles);
+    localStorage.setItem(`codesphere_${userKey}_files_${name}`, JSON.stringify(newFiles));
+
+    const defaultOpen = newFiles.slice(0, 1).map((f) => f.name);
+    setOpenFiles(defaultOpen);
+    localStorage.setItem(`codesphere_${userKey}_open_files_${name}`, JSON.stringify(defaultOpen));
+
+    const selected = defaultOpen[0] || "";
+    setSelectedFile(selected);
+    localStorage.setItem(`codesphere_${userKey}_selected_file_${name}`, selected);
+
+    if (selected) {
+      const activeObj = newFiles.find((f) => f.name === selected);
+      setCode(activeObj ? activeObj.code : "");
+    } else {
+      setCode("");
+    }
+
+    setIsCreateProjectModalOpen(false);
+    setViewMode("editor");
+  };
+
+  const handleGitCloneSubmit = async (gitUrl) => {
+    if (!gitUrl.trim()) return;
+
+    if (!backendStatus) {
+      alert("Backend is not connected. Git clone requires a running backend.");
       return;
     }
 
-    const newProjectFiles = defaultFiles.map((file) => ({ ...file }));
-    setProjects((prev) => [...prev, projectName]);
-    setCurrentProject(projectName);
-    setFiles(newProjectFiles);
-    setOpenFiles(["App.jsx"]);
-    setSelectedFile("App.jsx");
-    setCode(newProjectFiles[0].code);
-    setDirtyFiles([]);
-    setOutput(`✅ New project created: ${projectName}`);
-
-    // Push to backend if connected
-    if (backendStatus) {
-      fetch(`${API_BASE}/projects`, {
+    try {
+      const response = await fetch(`${API_BASE}/projects/clone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: projectName,
-          files: newProjectFiles,
-          customPath: customPath || undefined
-        })
-      }).catch((err) => console.warn("Backend create failed:", err));
+        body: JSON.stringify({ gitUrl })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to clone repository");
+      }
+
+      const data = await response.json();
+
+      const newFiles = typeof data.files === 'string' ? JSON.parse(data.files) : data.files;
+      const projName = data.name;
+
+      if (!projects.includes(projName)) {
+        const updatedProjects = [...projects, projName];
+        setProjects(updatedProjects);
+        localStorage.setItem(`codesphere_${userKey}_projects`, JSON.stringify(updatedProjects));
+      }
+
+      setCurrentProject(projName);
+      localStorage.setItem(`codesphere_${userKey}_current_project`, projName);
+
+      setFiles(newFiles);
+      localStorage.setItem(`codesphere_${userKey}_files_${projName}`, JSON.stringify(newFiles));
+
+      const defaultOpen = newFiles.length > 0 ? [newFiles[0].name] : [];
+      setOpenFiles(defaultOpen);
+      localStorage.setItem(`codesphere_${userKey}_open_files_${projName}`, JSON.stringify(defaultOpen));
+
+      const selected = defaultOpen[0] || "";
+      setSelectedFile(selected);
+      localStorage.setItem(`codesphere_${userKey}_selected_file_${projName}`, selected);
+
+      if (selected) {
+        const activeObj = newFiles.find((f) => f.name === selected);
+        setCode(activeObj ? activeObj.code : "");
+      } else {
+        setCode("");
+      }
+
+      setIsGitCloneModalOpen(false);
+      setViewMode("editor");
+      setActiveTab("explorer");
+    } catch (err) {
+      console.error(err);
+      alert(`Git Clone Failed: ${err.message}`);
     }
   };
 
@@ -543,7 +621,7 @@ function App() {
     } else {
       // Backend Execution for Python, Java, C, C++, raw JS, etc.
       setBottomTab("terminal");
-      
+
       let command = "";
       if (lang === "python") command = `python3 ${selectedFile}`;
       else if (lang === "java") command = `javac ${selectedFile} && java ${selectedFile.replace('.java', '')}`;
@@ -555,7 +633,7 @@ function App() {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('terminal:run-command', { detail: command }));
       }, 300);
-      
+
       addRunHistory(selectedFile, "Success", "Sent command to interactive terminal");
     }
   }, [files, selectedFile, addRunHistory, handleSaveCode]);
@@ -690,6 +768,82 @@ function App() {
       }
     );
   };
+
+  const handleExecuteAIActions = useCallback((actions) => {
+    actions.forEach(action => {
+      if (action.action === "CREATE_PROJECT") {
+        const projName = action.name || "AI Generated Project";
+        setProjects(prev => {
+          const updated = !prev.includes(projName) ? [...prev, projName] : prev;
+          localStorage.setItem(`codesphere_projects_${userKey}`, JSON.stringify(updated));
+          return updated;
+        });
+        setCurrentProject(projName);
+        localStorage.setItem(`codesphere_${userKey}_current_project`, projName);
+
+        const newFiles = action.files || [];
+        if (newFiles.length > 0) {
+          const names = newFiles.map(f => f.path || f.name);
+          setOpenFiles(names);
+          setSelectedFile(names[0]);
+          setCode(newFiles[0].content || newFiles[0].code || "");
+
+          const formattedFiles = newFiles.map(f => {
+            const fileName = f.path || f.name;
+            const ext = fileName.split('.').pop();
+            return {
+              name: fileName,
+              language: (ext === 'js' || ext === 'jsx') ? 'javascript' : ext,
+              code: f.content || f.code || ""
+            };
+          });
+          setFiles(formattedFiles);
+
+          // Save to LocalStorage immediately so it persists
+          localStorage.setItem(`code-editor-files-${projName}`, JSON.stringify(formattedFiles));
+          localStorage.setItem(`code-editor-open-files-${projName}`, JSON.stringify(names));
+          localStorage.setItem(`code-editor-selected-file-${projName}`, names[0]);
+        }
+
+        // Show the editor and switch to Explorer tab so user sees the files!
+        setViewMode("editor");
+        setActiveTab("explorer");
+
+      } else if (action.action === "UPDATE_FILE") {
+        const filePath = action.path || action.name;
+        const newCode = action.content || action.code;
+
+        setFiles(prev => {
+          const exists = prev.find(f => f.name === filePath);
+          const updated = exists
+            ? prev.map(f => f.name === filePath ? { ...f, code: newCode } : f)
+            : [...prev, { name: filePath, language: (filePath.split('.').pop() === 'js' || filePath.split('.').pop() === 'jsx') ? 'javascript' : filePath.split('.').pop(), code: newCode }];
+
+          if (currentProject) {
+            localStorage.setItem(`code-editor-files-${currentProject}`, JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        setOpenFiles(prev => {
+          const updated = !prev.includes(filePath) ? [...prev, filePath] : prev;
+          if (currentProject) {
+            localStorage.setItem(`code-editor-open-files-${currentProject}`, JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        setSelectedFile(filePath);
+        if (currentProject) {
+          localStorage.setItem(`code-editor-selected-file-${currentProject}`, filePath);
+        }
+        setCode(newCode);
+
+        // Switch to Explorer to show the updated file structure
+        setActiveTab("explorer");
+      }
+    });
+  }, [userKey, currentProject]);
 
   // Delete File
   const handleDeleteFile = (fileName) => {
@@ -841,6 +995,8 @@ function App() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             backendStatus={backendStatus}
+            showAiPanel={showAiPanel}
+            toggleAiPanel={() => setShowAiPanel(prev => !prev)}
             onToggleTheme={() =>
               setTheme((prev) => (prev === "vs-dark" ? "vs-light" : prev === "vs-light" ? "hc-black" : "vs-dark"))
             }
@@ -857,6 +1013,7 @@ function App() {
               onDeleteFile={handleDeleteFile}
               onRenameFile={handleRenameFile}
               currentProject={currentProject}
+              onOpenProject={() => setViewMode("dashboard")}
             />
           )}
 
@@ -878,98 +1035,121 @@ function App() {
             </aside>
           )}
 
-          {activeTab === "ai" && (
-            <AiAssistantPanel
-              selectedFile={selectedFile}
-              currentCode={code}
-              onInsertCode={(newCode) => {
-                if (selectedFile) handleCodeChange(newCode);
-              }}
-            />
-          )}
+          <div className="workspace-main" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <div className="workspace-top" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* CODE EDITOR */}
+              <CodeEditor
+                code={code}
+                setCode={handleCodeChange}
+                selectedFile={selectedFile}
+                files={files}
+                openFiles={openFiles}
+                onFileSelect={handleFileSelect}
+                onCloseFile={handleCloseFile}
+                dirtyFiles={dirtyFiles}
+                onCursorChange={setCursorPosition}
+                theme={theme}
+                saveCode={handleSaveCode}
+                runCode={handleRunCode}
+                fontSize={editorSettings.fontSize}
+                tabSize={editorSettings.tabSize}
+                projects={projects}
+                onNewFile={() => setActiveTab("explorer")} // Just open explorer to let them click the + icon
+                onOpenProject={() => setViewMode("dashboard")}
+                onCloneGit={() => setIsGitCloneModalOpen(true)}
+                onGenerateWorkspace={() => setIsCreateProjectModalOpen(true)}
+                onOpenRecent={(projName) => handleProjectSelect(projName)}
+              />
 
-          {/* CODE EDITOR */}
-          <CodeEditor
-            code={code}
-            setCode={handleCodeChange}
-            selectedFile={selectedFile}
-            files={files}
-            openFiles={openFiles}
-            onFileSelect={handleFileSelect}
-            onCloseFile={handleCloseFile}
-            dirtyFiles={dirtyFiles}
-            onCursorChange={setCursorPosition}
-            theme={theme}
-            saveCode={handleSaveCode}
-            runCode={handleRunCode}
-            fontSize={editorSettings.fontSize}
-            tabSize={editorSettings.tabSize}
-          />
-
-          {/* HORIZONTAL DRAG HANDLE */}
-          <div
-            onMouseDown={startHorizontalResizing}
-            style={{
-              width: '4px',
-              cursor: 'col-resize',
-              backgroundColor: '#30363d',
-              height: '100%',
-              zIndex: 10,
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
-          />
-
-          {/* RIGHT PANEL (PREVIEW & CONSOLE) */}
-          <div className="right-panel" style={{ width: `${rightPanelWidth}px`, minWidth: '250px', display: 'flex', flexDirection: 'column' }}>
-            {showPreview && (
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
-              </div>
-            )}
-
-            {/* DRAG HANDLE FOR RESIZING BOTTOM PANEL */}
-            {showPreview && (
+              {/* HORIZONTAL DRAG HANDLE */}
               <div
-                onMouseDown={startResizing}
+                onMouseDown={startHorizontalResizing}
                 style={{
-                  height: '4px',
-                  cursor: 'row-resize',
+                  width: '4px',
+                  cursor: 'col-resize',
                   backgroundColor: '#30363d',
-                  width: '100%',
-                  zIndex: 10
+                  height: '100%',
+                  zIndex: 10,
+                  flexShrink: 0
                 }}
                 onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
                 onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
               />
-            )}
 
-            <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: showPreview ? `${bottomPanelHeight}px` : '100%', flex: showPreview ? 'none' : 1, minHeight: '100px', backgroundColor: '#0d1117' }}>
-              <div className="bottom-panel-tabs" style={{ display: 'flex', gap: '16px', padding: '8px 16px', borderBottom: '1px solid #30363d', backgroundColor: '#161b22', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <div
-                  style={{ cursor: 'pointer', color: bottomTab === 'output' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'output' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
-                  onClick={() => setBottomTab('output')}
-                >
-                  Output
+              {/* RIGHT PANEL (PREVIEW) */}
+              {showPreview && (
+                <div className="right-panel" style={{ width: `${rightPanelWidth}px`, minWidth: '250px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 1, minHeight: 0 }}>
+                    <Preview files={files} onConsoleMessage={handleConsoleMessage} runCode={runCode} />
+                  </div>
                 </div>
-                <div
-                  style={{ cursor: 'pointer', color: bottomTab === 'terminal' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'terminal' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
-                  onClick={() => setBottomTab('terminal')}
-                >
-                  Terminal
-                </div>
-              </div>
-              <div className="bottom-panel-content" style={{ flex: 1, overflow: 'hidden' }}>
-                {bottomTab === 'output' && (
-                  <OutputPanel output={output} clearOutput={clearOutput} />
-                )}
-                {bottomTab === 'terminal' && (
-                  <TerminalPanel currentProject={currentProject} theme={theme} />
-                )}
-              </div>
+              )}
             </div>
+
+            {/* DRAG HANDLE FOR RESIZING BOTTOM PANEL */}
+            {openFiles.length > 0 && (
+              <>
+                <div
+                  onMouseDown={startResizing}
+                  style={{ height: '4px', cursor: 'row-resize', backgroundColor: '#30363d', width: '100%', zIndex: 10 }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
+                />
+
+                {/* BOTTOM PANEL (TERMINAL & OUTPUT) */}
+                <div className="bottom-panel-container" style={{ display: 'flex', flexDirection: 'column', height: `${bottomPanelHeight}px`, minHeight: '100px', backgroundColor: '#0d1117' }}>
+                  <div className="bottom-panel-tabs" style={{ display: 'flex', gap: '16px', padding: '8px 16px', borderBottom: '1px solid #30363d', backgroundColor: '#161b22', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div
+                      style={{ cursor: 'pointer', color: bottomTab === 'output' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'output' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
+                      onClick={() => setBottomTab('output')}
+                    >
+                      Output
+                    </div>
+                    <div
+                      style={{ cursor: 'pointer', color: bottomTab === 'terminal' ? '#e6edf3' : '#8b949e', borderBottom: bottomTab === 'terminal' ? '1px solid #58a6ff' : 'none', paddingBottom: '4px' }}
+                      onClick={() => setBottomTab('terminal')}
+                    >
+                      Terminal
+                    </div>
+                  </div>
+                  <div className="bottom-panel-content" style={{ flex: 1, overflow: 'hidden' }}>
+                    {bottomTab === 'output' && (
+                      <OutputPanel output={output} clearOutput={clearOutput} />
+                    )}
+                    {bottomTab === 'terminal' && (
+                      <TerminalPanel currentProject={currentProject} theme={theme} />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
+
+          {/* HORIZONTAL DRAG HANDLE (AI PANEL) */}
+          {showAiPanel && (
+            <div
+              onMouseDown={startHorizontalResizingAi}
+              style={{ width: '4px', cursor: 'col-resize', backgroundColor: '#30363d', zIndex: 10, flexShrink: 0 }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#58a6ff'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#30363d'}
+            />
+          )}
+
+          {/* AI ASSISTANT PANEL */}
+          {showAiPanel && (
+            <div className="ai-panel-container" style={{ width: `${aiPanelWidth}px`, minWidth: '300px', display: 'flex', flexDirection: 'column', borderLeft: '1px solid #30363d', backgroundColor: '#0d1117' }}>
+              <AiAssistantPanel
+                selectedFile={selectedFile}
+                currentCode={code}
+                files={files}
+                onInsertCode={(newCode) => {
+                  if (selectedFile) handleCodeChange(newCode);
+                }}
+                onExecuteActions={handleExecuteAIActions}
+                onClose={() => setShowAiPanel(false)}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -984,6 +1164,17 @@ function App() {
 
       {/* MODALS */}
       <InputDialogModal {...inputModal} onClose={closeInputModal} />
+
+      <InputDialogModal
+        isOpen={isGitCloneModalOpen}
+        title="📥 Clone Git Repository"
+        description="Enter the URL of a public Git repository to clone and open as a new workspace."
+        placeholder="https://github.com/user/repo.git"
+        defaultValue=""
+        onClose={() => setIsGitCloneModalOpen(false)}
+        onSubmit={handleGitCloneSubmit}
+      />
+
       <CreateProjectModal
         isOpen={isCreateProjectModalOpen}
         onClose={() => setIsCreateProjectModalOpen(false)}

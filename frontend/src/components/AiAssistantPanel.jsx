@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 
-function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
+function AiAssistantPanel({ selectedFile, currentCode, files = [], onInsertCode, onExecuteActions, onClose }) {
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: "ai",
-      text: `Hello! I am your **CodeSphere AI Assistant** 🚀 (Powered by Real Gemini LLM). Ask me anything — write code in Java, Python, JavaScript, C++, explain logic, or debug errors!`,
+      text: `Hello! I am your **CodeSphere Agentic AI** 🚀 (Powered by Gemini). Ask me to create projects, generate full file structures, or debug your code!`,
       codeSnippet: null,
       languageTag: null
     }
@@ -260,6 +260,7 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
           prompt: textToSend,
           fileName: selectedFile,
           codeContext: currentCode,
+          projectFiles: files.map(f => ({ name: f.name, code: f.code })),
           chatHistory: messages,
           attachments: currentAttachments
         })
@@ -267,16 +268,29 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
 
       if (response.ok) {
         const data = await response.json();
+        
+        let replyText = data.reply || "";
+        const actions = data.actions || [];
+        const messageActions = actions.filter(a => a.action === "MESSAGE");
+        if (messageActions.length > 0) {
+          replyText = messageActions.map(a => a.content).join("\n\n");
+        }
+
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
             sender: "ai",
-            text: data.reply,
+            text: replyText,
             codeSnippet: data.codeSnippet || null,
             languageTag: data.languageTag || "code"
           }
         ]);
+
+        // Tell App.jsx to execute these agentic actions (create file, update file, etc)
+        if (onExecuteActions && actions.length > 0) {
+          onExecuteActions(actions);
+        }
       } else {
         throw new Error("Failed backend response");
       }
@@ -288,11 +302,22 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
           {
             id: Date.now() + 1,
             sender: "ai",
-            text: `### 🤖 CodeSphere AI Offline Response\n\nThe server is offline. Here is a simulated response:`,
-            codeSnippet: `// Simulated CodeSphere response for: ${textToSend}\nfunction solution() {\n  console.log("Executed successfully!");\n}`,
-            languageTag: "javascript"
+            text: "⚠️ The backend server is unreachable. I am generating a simulated project to demonstrate the Agentic UI features.",
+            codeSnippet: null,
+            languageTag: "code"
           }
         ]);
+        
+        if (onExecuteActions) {
+          onExecuteActions([{
+            action: "CREATE_PROJECT",
+            name: "Local Offline Demo",
+            files: [
+              { path: "App.js", content: "console.log('App loaded offline');" },
+              { path: "style.css", content: "body { background: #333; color: #fff; }" }
+            ]
+          }]);
+        }
       }, 600);
     } finally {
       setIsLoading(false);
@@ -300,13 +325,29 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
   };
 
   return (
-    <aside className="sidebar ai-assistant-panel modern-ai-panel">
+    <aside className="sidebar ai-assistant-panel modern-ai-panel" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', borderRight: 'none' }}>
       {/* AI HEADER */}
-      <div className="ai-header-minimal">
+      <div className="ai-header-minimal" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #30363d' }}>
         <div className="ai-brand-minimal">
           <span className="ai-brand-icon">✧</span>
           <span className="ai-brand-text">CodeSphere AI</span>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#8b949e',
+              cursor: 'pointer',
+              fontSize: '18px',
+              padding: '4px'
+            }}
+            title="Close Panel"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* QUICK PRESET CHIPS */}
@@ -325,80 +366,52 @@ function AiAssistantPanel({ selectedFile, currentCode, onInsertCode }) {
         </button>
       </div>
 
-      {/* CHAT MESSAGES CONTAINER */}
-      <div className="ai-chat-messages">
+      {/* CHAT MESSAGES */}
+      <div className="ai-chat-history">
         {messages.map((msg) => (
-          <div key={msg.id} className={`chat-message-row ${msg.sender}`}>
-            {msg.sender === "ai" && (
-              <div className="ai-avatar">✧</div>
-            )}
-
-            <div className={`message-content ${msg.sender}-content`}>
-              <div className="message-body">
-                {/* Render Attachments in chat history */}
-                {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="chat-message-attachments">
-                    {msg.attachments.map((att, idx) => (
-                      <div key={idx} className="chat-attachment-bubble">
-                        <span className="att-icon">📎</span> {att.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {msg.sender === "ai" ? (
-                  renderFormattedText(msg.text)
-                ) : (
-                  <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.5" }}>{msg.text}</p>
-                )}
-
-                {/* CODE SNIPPET BOX */}
-                {msg.codeSnippet && (
-                  <div className="ai-code-block">
-                    <div className="code-block-header">
-                      <span className="code-lang">
-                        {msg.languageTag || "code"}
-                      </span>
-                      <div className="block-actions">
-                        <button
-                          className="btn-code-action insert"
-                          onClick={() => onInsertCode(msg.codeSnippet)}
-                          title="Insert at cursor"
-                        >
-                          📥 Insert
+          <div key={msg.id} className={`ai-message-wrapper ${msg.sender === "user" ? "user-message" : "ai-message"}`}>
+            {msg.sender === "ai" && <div className="ai-avatar">✧</div>}
+            <div className="message-content-block">
+              {/* Attachments rendering logic remains similar if needed */}
+              {msg.text && (
+                <div className="ai-text">
+                  {renderFormattedText(msg.text)}
+                </div>
+              )}
+              {msg.codeSnippet && (
+                <div className="ai-code-block">
+                  <div className="code-header">
+                    <span>{msg.languageTag || "code"}</span>
+                    <div className="code-actions">
+                      {onInsertCode && (
+                        <button className="code-btn" onClick={() => onInsertCode(msg.codeSnippet)}>
+                          <span className="icon">↳</span> Insert
                         </button>
-                        <button
-                          className="btn-code-action"
-                          onClick={() => handleCopyCode(msg.codeSnippet, msg.id)}
-                          title="Copy Code"
-                        >
-                          {copiedId === msg.id ? "✓ Copied!" : "📋 Copy"}
-                        </button>
-                      </div>
+                      )}
+                      <button className="code-btn" onClick={() => handleCopyCode(msg.codeSnippet, msg.id)}>
+                        {copiedId === msg.id ? "Copied!" : "Copy"}
+                      </button>
                     </div>
-                    <pre className="code-block-content">
-                      {msg.codeSnippet}
-                    </pre>
                   </div>
-                )}
-              </div>
+                  <pre>
+                    <code>{msg.codeSnippet}</code>
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         ))}
-
         {isLoading && (
-          <div className="chat-message-row ai">
-            <div className="ai-avatar">✧</div>
-            <div className="message-content ai-content">
-              <div className="ai-typing-modern">
-                <span className="dot"></span>
-                <span className="dot"></span>
-                <span className="dot"></span>
-              </div>
+          <div className="ai-message-wrapper ai-message">
+            <div className="ai-avatar thinking-avatar">✧</div>
+            <div className="message-content-block skeleton-block">
+              <div className="skeleton-line pulse" style={{ width: '80%' }}></div>
+              <div className="skeleton-line pulse" style={{ width: '60%' }}></div>
+              <div className="skeleton-line pulse" style={{ width: '90%' }}></div>
+              <span style={{fontSize: "12px", color: "#8b949e", marginTop: "8px", display: "inline-block"}}>Agent is analyzing workspace...</span>
             </div>
           </div>
         )}
-
         <div ref={chatEndRef} />
       </div>
 

@@ -1,0 +1,176 @@
+.welcome-page-container {
+  height: 100%;
+  padding: 40px 60px;
+  overflow-y: auto;
+  color: #cccccc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #1e1e1e; /* VS Code dark theme background */
+}
+
+/* Light mode overrides */
+.app-container.vs-light .welcome-page-container {
+  background-color: #ffffff;
+  color: #333333;
+}
+
+.welcome-header h1 {
+  font-size: 32px;
+  font-weight: 300;
+  margin: 0;
+  color: #e5e5e5;
+}
+
+.app-container.vs-light .welcome-header h1 {
+  color: #2c2c2c;
+}
+
+.welcome-header .subtitle {
+  font-size: 18px;
+  color: #8a8a8a;
+  margin-top: 4px;
+  margin-bottom: 40px;
+}
+
+.welcome-content {
+  display: flex;
+  gap: 60px;
+  max-width: 900px;
+}
+
+.welcome-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.walkthrough-column {
+  flex: 1.5;
+}
+
+.welcome-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #e5e5e5;
+}
+
+.app-container.vs-light .welcome-section h2 {
+  color: #2c2c2c;
+}
+
+.action-list, .recent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.action-list li, .recent-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  color: #007acc;
+  font-size: 13px;
+}
+
+.app-container.vs-light .action-list li, 
+.app-container.vs-light .recent-list li {
+  color: #006ab1;
+}
+
+.action-list li:hover, .recent-list li:hover {
+  text-decoration: underline;
+}
+
+.recent-name {
+  color: #007acc;
+}
+
+.app-container.vs-light .recent-name {
+  color: #006ab1;
+}
+
+.recent-path {
+  color: #8a8a8a;
+  font-size: 12px;
+}
+
+.recent-more {
+  margin-top: 8px;
+}
+
+.no-recent {
+  color: #8a8a8a;
+  font-size: 13px;
+  margin: 0;
+}
+
+.walkthrough-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.walkthrough-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background-color: #252526;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.app-container.vs-light .walkthrough-item {
+  background-color: #f3f3f3;
+}
+
+.walkthrough-item:hover {
+  background-color: #2a2d2e;
+  border-color: #007acc;
+}
+
+.app-container.vs-light .walkthrough-item:hover {
+  background-color: #e8e8e8;
+  border-color: #006ab1;
+}
+
+.walkthrough-icon {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.walkthrough-details h3 {
+  font-size: 13px;
+  font-weight: 400;
+  margin: 0;
+  color: #cccccc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-container.vs-light .walkthrough-details h3 {
+  color: #333333;
+}
+
+.walkthrough-details p {
+  font-size: 12px;
+  color: #8a8a8a;
+  margin: 4px 0 0 0;
+}
+
+.badge {
+  background-color: #007acc;
+  color: white;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+}

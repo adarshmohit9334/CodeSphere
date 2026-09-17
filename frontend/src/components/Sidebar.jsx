@@ -8,7 +8,8 @@ function Sidebar({
   onCreateFolder,
   onDeleteFile,
   onRenameFile,
-  currentProject
+  currentProject,
+  onOpenProject
 }) {
   const [isRootExpanded, setIsRootExpanded] = useState(true);
   const [expandedFolders, setExpandedFolders] = useState({ src: true, public: true, components: true });
@@ -86,6 +87,37 @@ function Sidebar({
     return acc;
   }, {});
 
+  if (!currentProject) {
+    return (
+      <aside className="sidebar codesphere-explorer">
+        <div className="explorer-header-bar">
+          <div className="explorer-title-toggle">
+            <span className="chevron">›</span>
+            <span className="explorer-title-text">NO FOLDER OPENED</span>
+          </div>
+        </div>
+        <div className="empty-sidebar-message" style={{ padding: '20px 15px', color: '#8b949e', fontSize: '13px', textAlign: 'center' }}>
+          <p style={{ marginBottom: '16px' }}>You have not yet opened a folder.</p>
+          <button 
+            onClick={() => {
+              if (onOpenProject) onOpenProject();
+            }} 
+            style={{ 
+              background: '#007acc', 
+              color: 'white', 
+              border: 'none', 
+              padding: '6px 12px', 
+              borderRadius: '2px',
+              cursor: 'pointer',
+              width: '100%'
+            }}>
+            Open Folder
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="sidebar codesphere-explorer">
       {/* CODESPHERE HEADER BAR */}
@@ -97,7 +129,7 @@ function Sidebar({
         >
           <span className="chevron">{isRootExpanded ? "∨" : "›"}</span>
           <span className="explorer-title-text">
-            {(currentProject || "FULL STACK").toUpperCase()}
+            {currentProject.toUpperCase()}
           </span>
         </div>
 

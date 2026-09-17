@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import Editor from "@monaco-editor/react";
+import WelcomePage from "./WelcomePage";
 
 function CodeEditor({
   code,
@@ -15,7 +16,13 @@ function CodeEditor({
   saveCode,
   runCode,
   fontSize = 14,
-  tabSize = 2
+  tabSize = 2,
+  projects,
+  onNewFile,
+  onOpenProject,
+  onCloneGit,
+  onGenerateWorkspace,
+  onOpenRecent
 }) {
   const editorRef = useRef(null);
 
@@ -124,15 +131,14 @@ function CodeEditor({
           }}
         />
       ) : (
-        <div className="no-file-open">
-          <div className="no-file-content">
-            <svg viewBox="0 0 100 100" width="64" height="64" fill="none">
-              <path d="M72 90L95 78V22L72 10L35 48L72 90Z" fill="#007ACC" opacity="0.5" />
-            </svg>
-            <h2>No File Open</h2>
-            <p>Select a file from the explorer or create a new file to start coding.</p>
-          </div>
-        </div>
+        <WelcomePage 
+          projects={projects}
+          onNewFile={onNewFile}
+          onOpenProject={onOpenProject}
+          onCloneGit={onCloneGit}
+          onGenerateWorkspace={onGenerateWorkspace}
+          onOpenRecent={onOpenRecent}
+        />
       )}
     </main>
   );
