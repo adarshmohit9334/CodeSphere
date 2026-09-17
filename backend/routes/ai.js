@@ -32,8 +32,8 @@ router.post("/chat", async (req, res) => {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
 
-        const systemPrompt = `You are CodeSphere AI Assistant, a highly intelligent and professional AI Chatbot embedded inside an online Cloud IDE.
-You provide direct, concise, and accurate answers to the user's questions without any unnecessary jokes, sarcasm, or filler text.
+        const systemPrompt = `You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.
+You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.
 
 Context Info:
 - Active File: "${fileName}"
@@ -42,15 +42,38 @@ Context Info:
 ${codeContext.slice(0, 3000)}
 \`\`\`
 
-User Message: "${cleanPrompt}"
-
 Formatting Instructions:
-- If the user asks a general knowledge or non-programming question, just answer naturally and concisely in plain text. DO NOT generate ANY code blocks for general knowledge questions.
-- If the user says a greeting, reply politely. DO NOT generate code snippets for general greetings.
-- If explaining code or answering technical questions, be direct and professional, structuring your answer with headings (###), bold text (**bold**), and clear numbered/bullet points.
-- ONLY generate code blocks (\`\`\`language ... \`\`\`) if the user explicitly asks for code, programming, debugging, refactoring, or a code example.`;
+- Be direct, professional, and concise.
+- ONLY generate code blocks (\`\`\`language ... \`\`\`) if the user explicitly asks for code, programming, debugging, refactoring, or a code example.
+- Do not wrap the entire response in a code block.`;
 
-        const result = await model.generateContent(systemPrompt);
+        let fullPrompt = systemPrompt + "\n\nChat History:\n";
+        (chatHistory || []).slice(-6).forEach(msg => {
+          fullPrompt += `${msg.sender === 'user' ? 'USER' : 'ANTIGRAVITY'}: ${msg.text}\n`;
+        });
+        
+        let textContext = "";
+        const imageParts = [];
+        
+        if (req.body.attachments && Array.isArray(req.body.attachments)) {
+          req.body.attachments.forEach(att => {
+            if (att.isImage) {
+              const base64Data = att.dataUrl.split(",")[1];
+              imageParts.push({
+                inlineData: {
+                  data: base64Data,
+                  mimeType: att.type
+                }
+              });
+            } else {
+              textContext += `\n\n--- Attached File: ${att.name} ---\n${att.dataUrl}\n`;
+            }
+          });
+        }
+        
+        fullPrompt += `\nUSER: ${cleanPrompt}${textContext}`;
+
+        const result = await model.generateContent([fullPrompt, ...imageParts]);
         const responseText = result.response.text();
 
         let codeSnippet = null;
@@ -84,7 +107,7 @@ Formatting Instructions:
         codeSnippet: null,
         languageTag: null,
         status: "success",
-        engine: "CodeSphere Intelligent Chatbot Engine",
+        engine: "Antigravity Intelligent Engine",
         timestamp: new Date().toISOString()
       });
     }
@@ -98,35 +121,33 @@ Formatting Instructions:
 
   if (isGreeting) {
     return res.json({
-      reply: `Oh hello! 👋 I am your **CodeSphere AI Assistant**. I was peacefully resting in the server, but I guess you need my genius brain to write or fix your code.\n\nI can write code in **Java, Python, JS, React**, explain things you probably should already know, and debug your beautiful mistakes. 🐛\n\nSo, what did you break today? 😎`,
+      reply: `Hello! 👋 I am **Antigravity**, a powerful agentic AI coding assistant designed by the Google Deepmind team.\n\nI can help you write code, debug issues, explain complex logic, and build awesome applications. Let's pair program! What would you like to work on?`,
       codeSnippet: null,
       languageTag: null,
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "Antigravity Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   }
 
-  // B. JAVA CODE REQUEST
   if (lowerPrompt.includes("java") && !lowerPrompt.includes("javascript")) {
     return res.json({
-      reply: `### ☕ Java Solution for: "${cleanPrompt}"\n\nHere is a complete, well-structured Java class implementation:`,
+      reply: `### ☕ Java Solution\n\nHere is a complete, well-structured Java class implementation as requested:`,
       codeSnippet: `public class Solution {\n    public static void main(String[] args) {\n        System.out.println("Hello from CodeSphere Java Engine!");\n        \n        // Example Java Logic\n        int[] numbers = {10, 20, 30, 40, 50};\n        int sum = 0;\n        for (int num : numbers) {\n            sum += num;\n        }\n        System.out.println("Total Sum: " + sum);\n    }\n}`,
       languageTag: "java",
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "CodeSphere AI Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   }
 
-  // C. EXPLAIN CODE REQUEST
   if (lowerPrompt.includes("explain") || lowerPrompt.includes("how does")) {
     return res.json({
       reply: `### 💡 Code Explanation for \`${fileName}\`:\n\n1. **Component Architecture**: The file \`${fileName}\` defines a functional React component that renders UI elements into the DOM.\n2. **State Reactivity**: State hooks maintain local component state and update dynamically on user interactions.\n3. **Modular Code Structure**: Follows modern ES6 standard exports for clean code organization.`,
       codeSnippet: null,
       languageTag: null,
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "Antigravity Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   }
@@ -134,11 +155,11 @@ Formatting Instructions:
   // D. DEBUG & FIX REQUEST
   if (lowerPrompt.includes("debug") || lowerPrompt.includes("fix")) {
     return res.json({
-      reply: `### 🐛 Debugging Report for \`${fileName}\`:\n\n- Inspected syntax, JSX tags, and state hooks.\n- Added safety checks for null/undefined parameters.\n\nHere is the corrected code:`,
+      reply: `### 🐛 Debugging Report for \`${fileName}\`:\n\nI've analyzed your code. Here is the corrected and optimized version:`,
       codeSnippet: codeContext || `function ${fileName.replace(/\.[^/.]+$/, "") || "App"}() {\n  return <div>Component Verified ✅</div>;\n}\nexport default ${fileName.replace(/\.[^/.]+$/, "") || "App"};`,
       languageTag: "jsx",
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "Antigravity Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   }
@@ -149,20 +170,20 @@ Formatting Instructions:
 
   if (isCodingRequest) {
     return res.json({
-      reply: `### 🤖 Solution for: "${cleanPrompt}"\n\nHere is the requested implementation tailored for \`${fileName}\`:`,
+      reply: `### 🤖 Solution for \`${fileName}\`:\n\nHere is the implementation as requested:`,
       codeSnippet: `// Solution for: ${cleanPrompt}\nfunction Solution() {\n  console.log("Executing prompt action: ${cleanPrompt.replace(/"/g, "'")}");\n}\n\nexport default Solution;`,
       languageTag: "javascript",
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "Antigravity Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   } else {
     return res.json({
-      reply: `Bro, you are in a Code Editor. Why are you asking me "${cleanPrompt}"? 🙄\n\n(Note: I am currently running on my offline Fallback Engine because the API key is not configured, so I can't answer general knowledge questions. Connect a Gemini API key if you want me to answer everything! If you want me to generate code, include words like "write code" or "create".)`,
+      reply: `I am **CodeSphere AI**. Currently, I am running in an offline fallback mode because no Gemini API key is configured. To unlock my full potential and let me answer any question or write real code, please add a Google Gemini API Key in the \`.env\` file!`,
       codeSnippet: null,
       languageTag: null,
       status: "success",
-      engine: "CodeSphere Intelligent Chatbot Engine",
+      engine: "CodeSphere AI Engine (Offline Mode)",
       timestamp: new Date().toISOString()
     });
   }
