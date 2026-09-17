@@ -4,7 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { io } from "socket.io-client";
 import "@xterm/xterm/css/xterm.css";
 
-export default function TerminalPanel({ currentProject }) {
+export default function TerminalPanel({ currentProject, theme }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const socketRef = useRef(null);
@@ -12,12 +12,19 @@ export default function TerminalPanel({ currentProject }) {
 
   useEffect(() => {
     // Initialize xterm
+    // Determine initial colors
+    const isLight = theme === 'vs-light';
+    const isHC = theme === 'hc-black';
+    
+    const termTheme = {
+      background: isLight ? '#ffffff' : (isHC ? '#000000' : '#161b22'),
+      foreground: isLight ? '#24292e' : (isHC ? '#ffffff' : '#e6edf3'),
+      cursor: isLight ? '#24292e' : '#ffffff'
+    };
+
     const term = new Terminal({
       cursorBlink: true,
-      theme: {
-        background: '#161b22', // GitHub/VS Code dark background
-        foreground: '#e6edf3',
-      },
+      theme: termTheme,
       fontFamily: '"Consolas", "Courier New", monospace',
       fontSize: 14,
       scrollback: 1000
@@ -86,7 +93,20 @@ export default function TerminalPanel({ currentProject }) {
       socket.disconnect();
       term.dispose();
     };
-  }, [currentProject]);
+  }, [currentProject]); // Note: We do NOT want to re-run this on theme changes, we handle theme changes separately.
+
+  // Handle dynamic theme changes without reconnecting
+  useEffect(() => {
+    if (xtermRef.current) {
+      const isLight = theme === 'vs-light';
+      const isHC = theme === 'hc-black';
+      xtermRef.current.options.theme = {
+        background: isLight ? '#ffffff' : (isHC ? '#000000' : '#161b22'),
+        foreground: isLight ? '#24292e' : (isHC ? '#ffffff' : '#e6edf3'),
+        cursor: isLight ? '#24292e' : '#ffffff'
+      };
+    }
+  }, [theme]);
 
   return (
     <div 

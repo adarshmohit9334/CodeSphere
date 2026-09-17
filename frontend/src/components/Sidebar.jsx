@@ -89,7 +89,7 @@ function Sidebar({
   return (
     <aside className="sidebar codesphere-explorer">
       {/* CODESPHERE HEADER BAR */}
-      <div className="sidebar-header-bar">
+      <div className="explorer-header-bar">
         <div
           className="explorer-title-toggle"
           onClick={() => setIsRootExpanded(!isRootExpanded)}

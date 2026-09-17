@@ -531,8 +531,13 @@ function App() {
 
     const lang = selectedData.language;
 
-    // Web languages run in Preview iframe
-    if (["javascript", "html", "css", "typescript"].includes(lang) && (selectedFile.endsWith('.jsx') || selectedFile.endsWith('.js') || selectedFile.endsWith('.html'))) {
+    // Check if project has web UI components (HTML or React App)
+    const hasHtml = files.some(f => f.name.endsWith('.html'));
+    const hasReactApp = files.some(f => f.name === 'App.jsx' || f.name === 'App.js');
+    const isWebProject = hasHtml || hasReactApp;
+
+    // Web projects run in Preview iframe
+    if (isWebProject && ["javascript", "html", "css", "typescript"].includes(lang)) {
       setRunCode((prev) => prev + 1);
       addRunHistory(selectedFile, "Success", "Browser preview refreshed");
     } else {
@@ -960,7 +965,7 @@ function App() {
                   <OutputPanel output={output} clearOutput={clearOutput} />
                 )}
                 {bottomTab === 'terminal' && (
-                  <TerminalPanel currentProject={currentProject} />
+                  <TerminalPanel currentProject={currentProject} theme={theme} />
                 )}
               </div>
             </div>
